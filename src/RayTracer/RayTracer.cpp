@@ -21,5 +21,5 @@ void RayTracer::Cleanup()
 
 void RayTracer::OutputPng(uint32_t* data, std::string path)
 {
-    stbi_write_png(path.c_str(), m_Width, m_Height, 4, data, sizeof(uint32_t) * 4);
+    stbi_write_png(path.c_str(), m_Width, m_Height, 4, data, sizeof(uint32_t) * m_Width);
 }

@@ -14,7 +14,7 @@ public:
     uint32_t* GenImage();
 
 private:
-    glm::vec4 GetPixelColor(int x, int y);
+    glm::vec4 GetPixelColor(glm::vec2 coord, int x, int y);
     uint32_t Vec4ToUint32(glm::vec4 vec);
 
 
