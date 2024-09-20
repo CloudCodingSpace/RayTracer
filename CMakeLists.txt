@@ -20,11 +20,15 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 endif()
 
-add_subdirectory(third-party/glfw)
+# add_subdirectory(third-party/imgui)
+# add_subdirectory(third-party/glfw)
+# add_subdirectory(third-party/glad)
 add_subdirectory(third-party/stb)
-add_subdirectory(third-party/glad)
 add_subdirectory(third-party/tinyobj)
 add_subdirectory(third-party/glm)
 
+# find_package(OpenGL REQUIRED)
+
 add_executable(RayTracer ${SRCS})
-target_link_libraries(RayTracer PRIVATE glfw stb glad tinyobj glm)
+target_link_libraries(RayTracer PRIVATE stb tinyobj glm)
+# target_link_libraries(RayTracer PRIVATE imgui glfw stb glad tinyobj glm OpenGL::GL)
