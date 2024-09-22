@@ -1,4 +1,3 @@
-
 #include "Renderer.h"
 
 void Renderer::Init(uint32_t width, uint32_t height)
@@ -26,25 +25,24 @@ void Renderer::Resize(uint32_t width, uint32_t height)
 
 uint32_t* Renderer::GenImage()
 {
-    for(int y = 0; y < m_Height; y++)
+    for(int y = m_Height - 1; y >= 0; y--)
     {
         for(int x = 0; x < m_Width; x++)
         {
-            glm::vec2 coord = { (float)x / (float)m_Width, (float)y / (float)m_Height };
+            glm::vec2 coord = { (float)x / (float)m_Width, (float)y / (float)m_Height};
 			coord = coord * 2.0f - 1.0f; // -1 -> 1
-            m_Pixels[x + y * m_Width] = Vec4ToUint32(GetPixelColor(coord, x, y));
+            m_Pixels[x + (m_Height - y) * m_Width] = Vec4ToUint32(GetPixelColor(coord));
         }
     }
 
     return m_Pixels;
 }
 
-glm::vec4 Renderer::GetPixelColor(glm::vec2 coord, int x, int y)
+glm::vec4 Renderer::GetPixelColor(glm::vec2 coord)
 {
-    float r = float(x) / m_Width;
-    float g = float(y) / m_Height;
-    float b = 0.0f;
-    return glm::vec4(r, g, b, 1.0f);
+    
+
+    return glm::vec4(coord, 0.0f, 1.0f);
 }
 
 uint32_t Renderer::Vec4ToUint32(glm::vec4 vec)
