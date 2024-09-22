@@ -21,4 +21,5 @@ private:
 private:
     uint32_t* m_Pixels;
     uint32_t m_Width, m_Height;
+    glm::vec3 m_CamOrigin;
 };

@@ -1,10 +1,13 @@
 #include "Renderer.h"
 
+#include "Ray.h"
+
 void Renderer::Init(uint32_t width, uint32_t height)
 {
     m_Width = width;
     m_Height = height;
     m_Pixels = new uint32_t[width * height];
+    m_CamOrigin = glm::vec3(0.0f, 0.0f, 2.5f);
 }
 
 void Renderer::Cleanup()
@@ -30,8 +33,9 @@ uint32_t* Renderer::GenImage()
         for(int x = 0; x < m_Width; x++)
         {
             glm::vec2 coord = { (float)x / (float)m_Width, (float)y / (float)m_Height};
-			coord = coord * 2.0f - 1.0f; // -1 -> 1
-            m_Pixels[x + (m_Height - y) * m_Width] = Vec4ToUint32(GetPixelColor(coord));
+			coord = coord * 2.0f - 1.0f;
+            coord.x *= (float)m_Width / (float)m_Height;
+            m_Pixels[x + (m_Height - (y + 1)) * m_Width] = Vec4ToUint32(GetPixelColor(coord));
         }
     }
 
@@ -40,9 +44,21 @@ uint32_t* Renderer::GenImage()
 
 glm::vec4 Renderer::GetPixelColor(glm::vec2 coord)
 {
-    
+    Ray camRay(m_CamOrigin, glm::vec3(coord, -1.0f));
+    float r = 0.5f;
 
-    return glm::vec4(coord, 0.0f, 1.0f);
+    float a = glm::dot(camRay.GetDir(), camRay.GetDir());
+    float b = 2.0f * glm::dot(camRay.GetOrigin(), camRay.GetDir());
+    float c = glm::dot(camRay.GetOrigin(), camRay.GetOrigin()) - r * r;
+
+    float disc = b * b - 4.0f * a * c;
+    if(disc < 0) {
+        float x = 0.5f * (glm::normalize(camRay.GetDir()).y + 1.0f);
+        glm::vec3 col = (1.0f - x) * glm::vec3(1.0f, 1.0f, 1.0f) + x * glm::vec3(0.0f, 0.7f, 1.0f);
+        return glm::vec4(col, 1.0f);
+    }
+
+    return glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 }
 
 uint32_t Renderer::Vec4ToUint32(glm::vec4 vec)
