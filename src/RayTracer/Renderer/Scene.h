@@ -6,11 +6,17 @@
 
 #include "Ray.h"
 
+struct Material
+{
+    glm::vec3 albedo;
+    float ambient;
+};
+
 struct Sphere
 {
     float radius;
     glm::vec3 center;
-    glm::vec3 albedo;
+    Material mat;
 
     float Hit(Ray& ray) {
         glm::vec3 o = ray.GetOrigin() - center;
@@ -30,11 +36,14 @@ struct Sphere
     }
 };
 
+struct LightSource
+{
+    glm::vec3 dir;
+    glm::vec3 color;
+};
+
 struct Scene
 {
     std::vector<Sphere> spheres;
-
-    inline bool IsEmpty() {
-        return spheres.empty();
-    }
+    LightSource lightSource;
 };

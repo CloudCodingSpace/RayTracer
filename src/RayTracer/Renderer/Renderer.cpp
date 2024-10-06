@@ -15,26 +15,6 @@ void Renderer::Init(uint32_t width, uint32_t height)
     SetupScene();
 }
 
-void Renderer::Cleanup()
-{
-    delete[] m_Pixels;
-}
-
-void Renderer::SetupScene()
-{
-	Sphere s1{};
-	s1.radius = 0.5f;
-	s1.albedo = { 1.0f, 0.0f, 0.0f };
-	s1.center = { 1.0f, 0.0f, -1.0f };
-	m_Scene.spheres.push_back(s1);
-
-    Sphere s2{};
-    s2.radius = 0.5f;
-    s2.center = { 0.0f, 0.0f, 0.0f };
-    s2.albedo = { 0.2f, 0.3f, 0.3f };
-	m_Scene.spheres.push_back(s2);
-}
-
 void Renderer::Resize(uint32_t width, uint32_t height)
 {
     m_Width = width;
@@ -76,6 +56,33 @@ uint32_t* Renderer::GenImage()
     return m_Pixels;
 }
 
+void Renderer::Cleanup()
+{
+    delete[] m_Pixels;
+}
+
+void Renderer::SetupScene()
+{
+	Sphere s1{};
+	s1.radius = 0.5f;
+	s1.center = { 1.0f, 0.0f, -1.0f };
+	s1.mat.albedo = { 1.0f, 0.0f, 0.0f };
+    s1.mat.ambient = 0.1f;
+	m_Scene.spheres.push_back(s1);
+
+    Sphere s2{};
+    s2.radius = 0.5f;
+    s2.center = { 0.0f, 0.0f, 0.0f };
+    s2.mat.albedo = { 0.2f, 0.3f, 0.3f };
+    s2.mat.ambient = 0.1f;
+	m_Scene.spheres.push_back(s2);
+
+    LightSource source{};
+    source.color = { 1.0f, 1.0f, 1.0f };
+    source.dir = { 1.0f, 1.0f, 1.0f };
+    m_Scene.lightSource = source;
+}
+
 glm::vec4 Renderer::GetPixelColor(glm::vec2 coord)
 {
     Ray camRay(m_CamOrigin, glm::vec3(coord, -1.0f));
@@ -98,10 +105,23 @@ glm::vec4 Renderer::GetPixelColor(glm::vec2 coord)
         goto bg;
     }
 
-    return glm::vec4(closestObj->albedo, 1.0f);
+    return ProcessMaterial(closestObj, camRay.At(t));
 
 bg:
 	float x = 0.5f * (glm::normalize(camRay.GetDir()).y + 1.0f);
 	glm::vec3 col = (1.0f - x) * glm::vec3(1.0f, 1.0f, 1.0f) + x * glm::vec3(0.0f, 0.7f, 1.0f);
 	return glm::vec4(col, 1.0f);
+}
+
+glm::vec4 Renderer::ProcessMaterial(Sphere* sphere, glm::vec3 hitPoint)
+{
+    Material mat = sphere->mat;
+
+    glm::vec3 normal = glm::normalize(hitPoint);
+    glm::vec3 finalColor(mat.albedo);
+
+    float diffuse = glm::max(glm::dot(normal, m_Scene.lightSource.dir), mat.ambient);
+    finalColor *= diffuse * m_Scene.lightSource.color;
+
+    return glm::vec4(finalColor, 1.0f);
 }
