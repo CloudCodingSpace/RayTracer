@@ -1,13 +1,20 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.8.0)
+cmake_policy(SET CMP0069 NEW)
 project(RayTracer)
 
 file(GLOB_RECURSE SRCS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+
+set(CMAKE_BUILD_TYPE Debug)
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+set(CMAKE_CXX_STANDARD 20)
+
+file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
 
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:Release>")
@@ -29,5 +36,6 @@ add_subdirectory(third-party/glm)
 # find_package(OpenGL REQUIRED)
 
 add_executable(RayTracer ${SRCS})
+
 target_link_libraries(RayTracer PRIVATE stb tinyobj glm)
 # target_link_libraries(RayTracer PRIVATE imgui glfw stb glad tinyobj glm OpenGL::GL)
