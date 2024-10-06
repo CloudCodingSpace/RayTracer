@@ -83,6 +83,13 @@ void Renderer::SetupScene()
     m_Scene.lightSource = source;
 }
 
+glm::vec4 Renderer::ProcessBg(Ray &ray)
+{
+    float x = 0.5f * (glm::normalize(ray.GetDir()).y + 1.0f);
+	glm::vec3 col = (1.0f - x) * glm::vec3(1.0f, 1.0f, 1.0f) + x * glm::vec3(0.0f, 0.7f, 1.0f);
+	return glm::vec4(col, 1.0f);
+}
+
 glm::vec4 Renderer::GetPixelColor(glm::vec2 coord)
 {
     Ray camRay(m_CamOrigin, glm::vec3(coord, -1.0f));
@@ -102,22 +109,17 @@ glm::vec4 Renderer::GetPixelColor(glm::vec2 coord)
     }
 
     if (closestObj == nullptr) {
-        goto bg;
+        return ProcessBg(camRay);
     }
 
     return ProcessMaterial(closestObj, camRay.At(t));
-
-bg:
-	float x = 0.5f * (glm::normalize(camRay.GetDir()).y + 1.0f);
-	glm::vec3 col = (1.0f - x) * glm::vec3(1.0f, 1.0f, 1.0f) + x * glm::vec3(0.0f, 0.7f, 1.0f);
-	return glm::vec4(col, 1.0f);
 }
 
 glm::vec4 Renderer::ProcessMaterial(Sphere* sphere, glm::vec3 hitPoint)
 {
     Material mat = sphere->mat;
-
     glm::vec3 normal = glm::normalize(hitPoint);
+
     glm::vec3 finalColor(mat.albedo);
 
     float diffuse = glm::max(glm::dot(normal, m_Scene.lightSource.dir), mat.ambient);

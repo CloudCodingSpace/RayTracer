@@ -17,11 +17,12 @@ public:
 
 private:
     glm::vec4 GetPixelColor(glm::vec2 coord);
-    uint32_t Vec4ToUint32(glm::vec4 vec);
 
     void SetupScene();
+    glm::vec4 ProcessBg(Ray& ray);
     glm::vec4 ProcessMaterial(Sphere* sphere, glm::vec3 hitPoint);
 
+    uint32_t Vec4ToUint32(glm::vec4 vec);
 private:
     uint32_t* m_Pixels;
     uint32_t m_Width, m_Height;
