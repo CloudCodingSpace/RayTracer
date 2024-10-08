@@ -38,12 +38,12 @@ struct Sphere
 
 struct LightSource
 {
-    glm::vec3 dir;
+    glm::vec3 origin;
     glm::vec3 color;
 };
 
 struct Scene
 {
     std::vector<Sphere> spheres;
-    LightSource lightSource;
+    std::vector<LightSource> lightSources;
 };
