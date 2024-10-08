@@ -78,17 +78,17 @@ void Renderer::SetupScene()
 	m_Scene.spheres.push_back(s2);
 
     LightSource source1{};
-    source1.origin = { -1.0f, -0.5f, -1.0f };
+    source1.origin = { -1.0f, -0.5f, 1.0f };
     source1.color = { 1.0f, 1.0f, 1.0f };
     m_Scene.lightSources.push_back(source1);
 
     LightSource source2{};
     source2.color = { 1.0f, 1.0f, 1.0f };
-    source2.origin = { 1.0f, 0.5f, -1.0f };
+    source2.origin = { 1.0f, 0.5f, 1.0f };
     m_Scene.lightSources.push_back(source2);
 }
 
-glm::vec4 Renderer::ProcessBg(Ray &ray)
+glm::vec4 Renderer::ProcessBg(Ray& ray)
 {
     float x = 0.5f * (glm::normalize(ray.GetDir()).y + 1.0f);
 	glm::vec3 col = (1.0f - x) * glm::vec3(1.0f, 1.0f, 1.0f) + x * glm::vec3(0.0f, 0.7f, 1.0f);
@@ -126,11 +126,10 @@ glm::vec4 Renderer::ProcessMaterial(Sphere* sphere, glm::vec3 hitPoint)
     glm::vec3 finalColor(mat.albedo);
     glm::vec3 lightContribution(0.0f);
 
-    for(const auto& source : m_Scene.lightSources)
+    for (const auto& source : m_Scene.lightSources)
     {
-        glm::vec3 dir = source.origin - hitPoint;
-
-        float diffuse = glm::max(glm::dot(normal, -dir), mat.ambient);
+        glm::vec3 dir = glm::normalize(source.origin - hitPoint);
+        float diffuse = glm::max(glm::dot(normal, dir), mat.ambient);
         lightContribution += diffuse * source.color;
     }
 
