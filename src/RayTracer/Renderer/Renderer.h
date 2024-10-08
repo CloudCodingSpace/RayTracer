@@ -26,6 +26,7 @@ private:
 private:
     uint32_t* m_Pixels;
     uint32_t m_Width, m_Height;
+    uint32_t m_Shininess;
     glm::vec3 m_CamOrigin;
 
     Scene m_Scene;

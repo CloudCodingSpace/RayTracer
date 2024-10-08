@@ -10,6 +10,7 @@ void Renderer::Init(uint32_t width, uint32_t height)
     m_Width = width;
     m_Height = height;
     m_Pixels = new uint32_t[width * height];
+    m_Shininess = 64;
     m_CamOrigin = glm::vec3(0.0f, 0.0f, 2.5f);
 
     SetupScene();
@@ -65,27 +66,27 @@ void Renderer::SetupScene()
 {
 	Sphere s1{};
 	s1.radius = 0.5f;
-	s1.center = { 1.0f, 0.0f, -1.0f };
+	s1.center = { 1.0f, 0.0f, 0.0f };
 	s1.mat.albedo = { 1.0f, 0.0f, 0.0f };
-    s1.mat.ambient = 0.1f;
+    s1.mat.ambient = 0.3f;
 	m_Scene.spheres.push_back(s1);
 
     Sphere s2{};
     s2.radius = 0.5f;
-    s2.center = { 0.0f, 0.0f, 0.0f };
+    s2.center = { -1.0f, 0.0f, 0.0f };
     s2.mat.albedo = { 0.2f, 0.3f, 0.3f };
-    s2.mat.ambient = 0.1f;
+    s2.mat.ambient = 0.3f;
 	m_Scene.spheres.push_back(s2);
 
     LightSource source1{};
-    source1.origin = { -1.0f, -0.5f, 1.0f };
+    source1.origin = { -1.0f, 0.0f, 1.0f };
     source1.color = { 1.0f, 1.0f, 1.0f };
     m_Scene.lightSources.push_back(source1);
 
-    LightSource source2{};
-    source2.color = { 1.0f, 1.0f, 1.0f };
-    source2.origin = { 1.0f, 0.5f, 1.0f };
-    m_Scene.lightSources.push_back(source2);
+    // LightSource source2{};
+    // source2.color = { 1.0f, 1.0f, 1.0f };
+    // source2.origin = { 1.0f, 0.0f, 1.0f };
+    // m_Scene.lightSources.push_back(source2);
 }
 
 glm::vec4 Renderer::ProcessBg(Ray& ray)
@@ -129,7 +130,19 @@ glm::vec4 Renderer::ProcessMaterial(Sphere* sphere, glm::vec3 hitPoint)
     for (const auto& source : m_Scene.lightSources)
     {
         glm::vec3 dir = glm::normalize(source.origin - hitPoint);
-        float diffuse = glm::max(glm::dot(normal, dir), mat.ambient);
+        float diffuse = 0.0f;
+        // Diffuse (Phong Lighting)
+        {
+            // Diffuse
+            diffuse = glm::max(glm::dot(normal, dir), 0.0f);        
+            // Specular
+            glm::vec3 viewDir = glm::normalize(m_CamOrigin - hitPoint);
+            glm::vec3 reflectDir = glm::reflect(-dir, normal);
+            float specular = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), m_Shininess);
+
+            diffuse += specular + sphere->mat.ambient;
+        }
+        
         lightContribution += diffuse * source.color;
     }
 
