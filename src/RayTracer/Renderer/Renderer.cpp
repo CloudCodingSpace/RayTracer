@@ -4,6 +4,8 @@
 #include "Scene.h"
 
 #include <limits>
+#include <chrono>
+#include <iostream>
 
 void Renderer::Init(uint32_t width, uint32_t height)
 {
@@ -43,6 +45,8 @@ uint32_t Renderer::Vec4ToUint32(glm::vec4 vec)
 
 uint32_t* Renderer::GenImage()
 {
+    auto start = std::chrono::high_resolution_clock::now();
+
     for(int y = (int)(m_Height - 1); y >= 0; y--)
     {
         for(int x = 0; x < (int)m_Width; x++)
@@ -52,6 +56,15 @@ uint32_t* Renderer::GenImage()
             coord.x *= (float)m_Width / (float)m_Height;
             m_Pixels[x + (m_Height - (y + 1)) * m_Width] = Vec4ToUint32(GetPixelColor(coord));
         }
+    }
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    // Logging the delta time
+    {
+        printf("\033[0;32m"); // Green Colour
+        std::cout << "[RayTracer] INFO: Generation of image took :- " << delta << std::endl;
+        printf("\033[0;0m");
     }
 
     return m_Pixels;
