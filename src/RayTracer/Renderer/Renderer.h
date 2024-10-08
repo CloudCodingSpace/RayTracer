@@ -29,5 +29,7 @@ private:
     uint32_t m_Shininess;
     glm::vec3 m_CamOrigin;
 
+    bool m_OpPhong;
+
     Scene m_Scene;
 };

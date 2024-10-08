@@ -6,10 +6,16 @@
 
 #include "Ray.h"
 
+enum MaterialType
+{
+    MATERIAL_TYPE_DIFFUSE
+};
+
 struct Material
 {
     glm::vec3 albedo;
     float ambient;
+    MaterialType type;
 };
 
 struct Sphere
