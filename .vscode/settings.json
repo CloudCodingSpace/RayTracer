@@ -57,5 +57,7 @@
         "format": "cpp",
         "span": "cpp",
         "variant": "cpp"
-    }
+    },
+    "editor.minimap.enabled": false,
+    "breadcrumbs.enabled": false
 }

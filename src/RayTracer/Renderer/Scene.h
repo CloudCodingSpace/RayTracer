@@ -46,6 +46,7 @@ struct LightSource
 {
     glm::vec3 origin;
     glm::vec3 color;
+    float intensity;
 };
 
 struct Scene

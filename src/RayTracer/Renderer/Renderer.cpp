@@ -15,7 +15,7 @@ void Renderer::Init(uint32_t width, uint32_t height)
     m_CamOrigin = glm::vec3(0.0f, 0.0f, 2.5f);
     
     m_Settings.shininess = 64;
-    m_Settings.opPhong = false;
+    m_Settings.opPhong = true;
 
     SetupScene();
 }
@@ -98,12 +98,14 @@ void Renderer::SetupScene()
     LightSource source1{};
     source1.origin = { -1.0f, 0.0f, 1.0f };
     source1.color = { 1.0f, 1.0f, 1.0f };
+    source1.intensity = 1.0f;
     m_Scene.lightSources.push_back(source1);
 
-    // LightSource source2{};
-    // source2.color = { 1.0f, 1.0f, 1.0f };
-    // source2.origin = { 1.0f, 0.0f, 1.0f };
-    // m_Scene.lightSources.push_back(source2);
+    LightSource source2{};
+    source2.color = { 1.0f, 1.0f, 1.0f };
+    source2.origin = { 1.0f, 0.0f, 1.0f };
+    source2.intensity = 0.09f;
+    m_Scene.lightSources.push_back(source2);
 }
 
 glm::vec4 Renderer::ProcessBg(Ray& ray)
@@ -159,12 +161,8 @@ glm::vec4 Renderer::ProcessMaterial(Sphere* sphere, glm::vec3 hitPoint)
                 float specular = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), m_Settings.shininess);
                 diffuse += specular + sphere->mat.ambient;
             }
-            else
-            {
-                diffuse += sphere->mat.ambient;
-            }
             
-            lightContribution += diffuse * source.color;
+            lightContribution += diffuse * (source.color * source.intensity);
         }
     }
 
