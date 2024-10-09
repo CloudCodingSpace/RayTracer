@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.5.0)
+cmake_policy(SET CMP0069 NEW)
 project(stb)
 
 file(GLOB_RECURSE SRCS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.c")

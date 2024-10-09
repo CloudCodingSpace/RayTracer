@@ -14,8 +14,6 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 set(CMAKE_CXX_STANDARD 20)
 
-file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
-
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:Release>")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -35,6 +33,7 @@ add_subdirectory(third-party/glm)
 
 # find_package(OpenGL REQUIRED)
 
+add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 add_executable(RayTracer ${SRCS})
 
 target_link_libraries(RayTracer PRIVATE stb tinyobj glm)
