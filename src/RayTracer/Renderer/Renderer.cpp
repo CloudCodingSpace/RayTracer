@@ -1,3 +1,4 @@
+
 #include "Renderer.h"
 
 #include "Ray.h"
@@ -101,11 +102,11 @@ void Renderer::SetupScene()
     source1.intensity = 1.0f;
     m_Scene.lightSources.push_back(source1);
 
-    LightSource source2{};
-    source2.color = { 1.0f, 1.0f, 1.0f };
-    source2.origin = { 1.0f, 0.0f, 1.0f };
-    source2.intensity = 0.09f;
-    m_Scene.lightSources.push_back(source2);
+    // LightSource source2{};
+    // source2.color = { 1.0f, 1.0f, 1.0f };
+    // source2.origin = { 1.0f, 0.0f, 1.0f };
+    // source2.intensity = 1.0f;
+    // m_Scene.lightSources.push_back(source2);
 }
 
 glm::vec4 Renderer::ProcessBg(Ray& ray)
