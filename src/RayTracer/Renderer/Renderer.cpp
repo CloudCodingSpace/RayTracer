@@ -12,9 +12,10 @@ void Renderer::Init(uint32_t width, uint32_t height)
     m_Width = width;
     m_Height = height;
     m_Pixels = new uint32_t[width * height];
-    m_Shininess = 64;
     m_CamOrigin = glm::vec3(0.0f, 0.0f, 2.5f);
-    m_OpPhong = false;
+    
+    m_Settings.shininess = 64;
+    m_Settings.opPhong = false;
 
     SetupScene();
 }
@@ -151,11 +152,11 @@ glm::vec4 Renderer::ProcessMaterial(Sphere* sphere, glm::vec3 hitPoint)
         {
             float diffuse = 0.0f;
             diffuse = glm::max(glm::dot(normal, dir), 0.0f);
-            if(m_OpPhong)
+            if(m_Settings.opPhong)
             {
                 glm::vec3 viewDir = glm::normalize(m_CamOrigin - hitPoint);
                 glm::vec3 reflectDir = glm::reflect(-dir, normal);
-                float specular = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), m_Shininess);
+                float specular = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), m_Settings.shininess);
                 diffuse += specular + sphere->mat.ambient;
             }
             else

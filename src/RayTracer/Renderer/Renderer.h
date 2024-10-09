@@ -5,6 +5,12 @@
 
 #include "Scene.h"
 
+struct RenderSettings
+{
+    bool opPhong;
+    uint32_t shininess;
+};
+
 class Renderer
 {
 public:
@@ -26,10 +32,9 @@ private:
 private:
     uint32_t* m_Pixels;
     uint32_t m_Width, m_Height;
-    uint32_t m_Shininess;
     glm::vec3 m_CamOrigin;
 
-    bool m_OpPhong;
+    RenderSettings m_Settings;
 
     Scene m_Scene;
 };
