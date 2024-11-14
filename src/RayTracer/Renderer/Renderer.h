@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include "Scene.h"
+#include "Camera.h"
 
 struct RenderSettings
 {
@@ -22,7 +23,7 @@ public:
     uint32_t* GenImage();
 
 private:
-    glm::vec4 GetPixelColor(glm::vec2 coord);
+    glm::vec4 GetPixelColor(glm::vec3 dir);
 
     void SetupScene();
     glm::vec4 ProcessBg(Ray& ray);
@@ -37,4 +38,5 @@ private:
     RenderSettings m_Settings;
 
     Scene m_Scene;
+    Camera m_Camera;
 };

@@ -1,4 +1,3 @@
-
 #include "Renderer.h"
 
 #include "Ray.h"
@@ -17,6 +16,8 @@ void Renderer::Init(uint32_t width, uint32_t height)
     
     m_Settings.shininess = 64;
     m_Settings.opPhong = true;
+
+    m_Camera.Init(width, height, 90, glm::vec3(0, 0, 3));
 
     SetupScene();
 }
@@ -50,14 +51,17 @@ uint32_t* Renderer::GenImage()
 {
     auto start = std::chrono::high_resolution_clock::now();
 
-    for(int y = (int)(m_Height - 1); y >= 0; y--)
+    for(int y = 0; y < (int)m_Height; y++)
     {
         for(int x = 0; x < (int)m_Width; x++)
         {
-            glm::vec2 coord = { (float)x / (float)m_Width, (float)y / (float)m_Height};
-			coord = coord * 2.0f - 1.0f;
-            coord.x *= (float)m_Width / (float)m_Height;
-            m_Pixels[x + (m_Height - (y + 1)) * m_Width] = Vec4ToUint32(GetPixelColor(coord));
+            float u = (float) x/(m_Width - 1);
+            float v = (float) y/(m_Height - 1);
+            
+            glm::vec3 target = m_Camera.CalcTarget(u, v);
+            glm::vec3 rayDir = glm::normalize(target - m_Camera.GetOrigin());
+
+            m_Pixels[x + y * m_Width] = Vec4ToUint32(GetPixelColor(rayDir));
         }
     }
 
@@ -102,11 +106,11 @@ void Renderer::SetupScene()
     source1.intensity = 1.0f;
     m_Scene.lightSources.push_back(source1);
 
-    // LightSource source2{};
-    // source2.color = { 1.0f, 1.0f, 1.0f };
-    // source2.origin = { 1.0f, 0.0f, 1.0f };
-    // source2.intensity = 1.0f;
-    // m_Scene.lightSources.push_back(source2);
+    LightSource source2{};
+    source2.color = { 1.0f, 1.0f, 1.0f };
+    source2.origin = { 1.0f, 0.0f, 1.0f };
+    source2.intensity = 1.0f;
+    m_Scene.lightSources.push_back(source2);
 }
 
 glm::vec4 Renderer::ProcessBg(Ray& ray)
@@ -116,9 +120,9 @@ glm::vec4 Renderer::ProcessBg(Ray& ray)
 	return glm::vec4(col, 1.0f);
 }
 
-glm::vec4 Renderer::GetPixelColor(glm::vec2 coord)
+glm::vec4 Renderer::GetPixelColor(glm::vec3 dir)
 {
-    Ray camRay(m_CamOrigin, glm::vec3(coord, -1.0f));
+    Ray camRay(m_CamOrigin, dir);
 
     Sphere* closestObj = nullptr;
     float t = std::numeric_limits<float>::max();

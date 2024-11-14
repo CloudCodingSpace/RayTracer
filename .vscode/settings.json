@@ -59,5 +59,6 @@
         "variant": "cpp"
     },
     "editor.minimap.enabled": false,
-    "breadcrumbs.enabled": false
+    "breadcrumbs.enabled": false,
+    "cmake.buildDirectory": "${workspaceFolder}/build/${buildType}"
 }
