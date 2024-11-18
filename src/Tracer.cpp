@@ -38,6 +38,7 @@ void Tracer::Init()
         info.width = 800;
         info.height = 600;
         info.fullscreen = false;
+        info.title = "RayTracer";
 
         m_Window.Init(info);
     }

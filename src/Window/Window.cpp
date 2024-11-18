@@ -14,7 +14,7 @@ void Window::Init(WindowInfo info)
 	assert(info.width && info.height && "The width and the height can't be 0!");
 
 	m_Info = info;
-	m_Title = "VoxeliteDev";
+	m_Title = info.title;
 
 	if (!glfwInit())
 	{

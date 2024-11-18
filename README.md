@@ -1,6 +1,6 @@
 # RayTracer
 RayTracer, this project is about me (@CloudCodingSpace), creating a software raytracer pretty much from scratch with very less number of dependencies.
-The prefferred language of choice is indeed C++.
+The prefferred language of choice is indeed C++. And the graphics API is OpenGL.
 
 ## Build
 First you need to clone this repository using this command on your terminal or powershell :- 

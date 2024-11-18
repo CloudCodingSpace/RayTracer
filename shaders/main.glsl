@@ -16,6 +16,8 @@ out vec4 FragColor;
 uniform vec2 u_resolution;
 uniform vec3 u_camPos;
 
+const float EPS = 1e-4;
+
 struct Ray {
     vec3 origin;
     vec3 direction;
@@ -45,12 +47,17 @@ HitInfo RayHitSphere(Ray ray, Sphere sphere) {
     float c = dot(o, o) - sphere.radius * sphere.radius;
 
     float disc = b * b - 4.0 * a * c;
-    if(disc < -1.0) {
+    if(disc < 0.0) {
         info.didHit = false;
     } else {
         info.didHit = true;
         info.t = (-b - sqrt(disc)) / (2.0 * a);
-        info.hitPoint = RayAt(ray, info.t);
+
+        if(info.t < 0.0) {
+            info.didHit = false;
+        } else {
+            info.hitPoint = RayAt(ray, info.t);
+        }
     }
 
     return info;
@@ -63,7 +70,7 @@ void main() {
     vec2 uv = gl_FragCoord.xy / u_resolution;
     uv = uv * 2.0 - 1.0;
     uv.x *= aspectRatio;
-    
+
     Ray camRay;
     camRay.origin = u_camPos;
     camRay.direction = vec3(uv, -1.0);
@@ -76,12 +83,13 @@ vec3 GetColor(Ray ray) {
     vec3 finalColor = vec3(-1);
 
     Sphere sphere;
-    sphere.origin = vec3(0.0, 0.0, -1.0);
+    sphere.origin = vec3(0.0, 0.0, -2.0);
     sphere.radius = 0.5;
 
     HitInfo info = RayHitSphere(ray, sphere);
     if(info.didHit) {
-        finalColor = vec3(1.0, 0.0, 0.0);
+        vec3 normal = normalize(info.hitPoint - sphere.origin);
+        finalColor = normal;
     }
 
     if(finalColor == vec3(-1)) {

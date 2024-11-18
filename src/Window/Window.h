@@ -9,6 +9,7 @@ struct WindowInfo
 {
 	bool fullscreen = false;
 	int width, height, xpos, ypos;
+	std::string title;
 };
 
 class Window
