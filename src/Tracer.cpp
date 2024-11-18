@@ -11,14 +11,28 @@ void Tracer::Run()
     {
         m_Window.Clear();
 
-        if(Input::IsKeyPressed(m_Window, GLFW_KEY_W))
-            m_CamPos.z -= 0.001;
-        if(Input::IsKeyPressed(m_Window, GLFW_KEY_S))
-            m_CamPos.z += 0.001;
-        if(Input::IsKeyPressed(m_Window, GLFW_KEY_A))
-            m_CamPos.x -= 0.001;
-        if(Input::IsKeyPressed(m_Window, GLFW_KEY_D))
-            m_CamPos.x += 0.001;
+        // Update
+        {
+            currentTime = glfwGetTime();
+            deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            m_Window.SetTitle(m_Window.GetTitle() + " | FPS :- " + std::to_string(1.0f/deltaTime) + " | Delta :- " + std::to_string(deltaTime) + "s");
+
+            if(Input::IsKeyPressed(m_Window, GLFW_KEY_W))
+                m_CamPos.z -= 2.0f * deltaTime;
+            if(Input::IsKeyPressed(m_Window, GLFW_KEY_S))
+                m_CamPos.z += 2.0f * deltaTime;
+            if(Input::IsKeyPressed(m_Window, GLFW_KEY_A))
+                m_CamPos.x -= 2.0f * deltaTime;
+            if(Input::IsKeyPressed(m_Window, GLFW_KEY_D))
+                m_CamPos.x += 2.0f * deltaTime;
+
+            if(Input::IsKeyPressed(m_Window, GLFW_KEY_SPACE))
+                m_CamPos.y += 2.0f * deltaTime;
+            if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
+                m_CamPos.y -= 2.0f * deltaTime;
+        }
 
         Render();
 
@@ -31,6 +45,9 @@ void Tracer::Run()
 void Tracer::Init()
 {
     m_CamPos = glm::vec3(0, 0, 0);
+    lastTime = 0.0f;
+    currentTime = 0.0f;
+    deltaTime = 0.0f;
 
     // Window
     {

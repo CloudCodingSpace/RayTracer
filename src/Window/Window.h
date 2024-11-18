@@ -28,6 +28,8 @@ public:
 	inline const WindowInfo& GetWindowInfo() { return m_Info; }
 	inline std::string GetTitle() { return m_Title; }
 	inline GLFWwindow* GetHandle() { return m_Handle; }
+
+	inline void SetTitle(std::string title) { glfwSetWindowTitle(m_Handle, title.c_str()); }
 private:
 	GLFWwindow* m_Handle;
 	std::string m_Title;

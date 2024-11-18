@@ -18,6 +18,7 @@ private:
     Shader m_Shader;
 
     glm::vec3 m_CamPos;
+    float lastTime, deltaTime, currentTime;
 
     uint32_t vao, vbo;
 };
