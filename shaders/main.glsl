@@ -73,14 +73,21 @@ void main() {
 }
 
 vec3 GetColor(Ray ray) {
+    vec3 finalColor = vec3(-1);
+
     Sphere sphere;
     sphere.origin = vec3(0.0, 0.0, -1.0);
     sphere.radius = 0.5;
 
     HitInfo info = RayHitSphere(ray, sphere);
     if(info.didHit) {
-        return vec3(1.0, 0.0, 0.0);
+        finalColor = vec3(1.0, 0.0, 0.0);
     }
 
-    return vec3(1.0);
+    if(finalColor == vec3(-1)) {
+        float x = 0.5 * (normalize(ray.direction).y + 1.0);
+        finalColor = (1.0f - x) * vec3(1.0f, 1.0f, 1.0f) + x * vec3(0.0f, 0.7f, 1.0f);
+    }
+
+    return finalColor;
 }
