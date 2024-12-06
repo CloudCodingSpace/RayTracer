@@ -1,14 +1,15 @@
 @echo off
 SetLocal EnableDelayedExpansion
 
-if not exist bin (
-    mkdir bin
+if not exist build (
+    mkdir build
 )
 
-pushd bin
+pushd build
 
-cmake ..
+cmake -S .. -B . -G "MinGW Makefiles" -DCMAKE_MAKE_PROGRAM=make -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build . --parallel
+copy compile_commands.json ..
 
 popd
 

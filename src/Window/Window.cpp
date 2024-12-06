@@ -7,6 +7,8 @@
 #include <thread>
 #include <cassert>
 
+#include <GLFW/glfw3.h>
+
 using namespace std::chrono_literals;
 
 void Window::Init(WindowInfo info)

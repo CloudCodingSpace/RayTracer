@@ -2,6 +2,8 @@
 
 #include "Window/Input.h"
 
+#include <stb/stb_image.h>
+
 void Tracer::Run()
 {
     Init();
@@ -61,7 +63,7 @@ void Tracer::Init()
     }
     // Shader
     {
-        m_Shader.Init("shaders/main.glsl");
+        m_Shader.Init("assets/shaders/main.glsl");
     }
     // GL
     {
@@ -86,11 +88,31 @@ void Tracer::Init()
         glEnableVertexAttribArray(0);
 
         glBindVertexArray(0);
+
+        // Skybox Texture
+        int width, height, channels;
+        stbi_set_flip_vertically_on_load(true);
+        stbi_uc* pixels = stbi_load("assets/skybox/s2.jpg", &width, &height, &channels, 4);
+        
+        glGenTextures(1, &skyTex);
+        m_Shader.PutFloat("u_skyboxTexture", 1.0f);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, skyTex);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+        stbi_image_free(pixels);
     }
 }
 
 void Tracer::Cleanup()
 {
+    glDeleteTextures(1, &skyTex);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     m_Window.Destroy();
@@ -103,6 +125,13 @@ void Tracer::Render()
     auto info = m_Window.GetWindowInfo();
     m_Shader.PutVec2("u_resolution", glm::vec2(info.width, info.height));
     m_Shader.PutVec3("u_camPos", m_CamPos);
+    m_Shader.PutFloat("u_skyboxStrength", 1.0f);
+    m_Shader.PutFloat("u_skyboxCeiling", 1.0f);
+    m_Shader.PutFloat("u_skyboxGamma", 1.0f);
+
+    glActiveTexture(GL_TEXTURE0);
+    m_Shader.PutTex("u_skyboxTexture", 0);
+    glBindTexture(GL_TEXTURE_2D, skyTex);
  
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);

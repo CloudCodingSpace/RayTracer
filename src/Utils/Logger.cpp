@@ -2,7 +2,7 @@
 
 void _log(LogSeverity severity, std::string msg)
 {
-    std::string message = "[Voxelite] ";
+    std::string message = "[GLTracer] ";
     switch(severity) {
         case LOG_SEVERITY_INFO:
             printf("\033[0;32m");

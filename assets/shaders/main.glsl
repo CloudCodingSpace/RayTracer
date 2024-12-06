@@ -11,10 +11,18 @@ void main()
 @type fragment
 #version 330 core
 
+const float PI = 3.141592653589793;
+
 out vec4 FragColor;
 
+
+uniform float u_skyboxStrength;
+uniform float u_skyboxCeiling;
+uniform float u_skyboxGamma;
 uniform vec2 u_resolution;
 uniform vec3 u_camPos;
+
+uniform sampler2D u_skyboxTexture;
 
 const float EPS = 1e-4;
 
@@ -36,6 +44,17 @@ struct HitInfo {
 
 vec3 RayAt(Ray ray, float t) {
     return ray.origin + ray.direction * t;
+}
+
+vec3 SampleSkybox(vec3 dir) {
+	if (u_skyboxStrength == 0.0) return vec3(0.0);
+	
+	return min(vec3(u_skyboxCeiling), 
+            u_skyboxStrength*
+            pow(texture(u_skyboxTexture, 
+            vec2(0.5 + atan(dir.x, dir.z)/(2*PI), 
+            0.5 + asin(-dir.y)/PI)).xyz, 
+            vec3(1.0/u_skyboxGamma)));
 }
 
 HitInfo RayHitSphere(Ray ray, Sphere sphere) {
@@ -73,7 +92,8 @@ void main() {
 
     Ray camRay;
     camRay.origin = u_camPos;
-    camRay.direction = vec3(uv, -1.0);
+
+    camRay.direction = vec3(uv, -1.0f);
 
     vec3 color = GetColor(camRay);
     FragColor = vec4(color, 1.0);
@@ -93,8 +113,13 @@ vec3 GetColor(Ray ray) {
     }
 
     if(finalColor == vec3(-1)) {
-        float x = 0.5 * (normalize(ray.direction).y + 1.0);
-        finalColor = (1.0f - x) * vec3(1.0f, 1.0f, 1.0f) + x * vec3(0.0f, 0.7f, 1.0f);
+        if(u_skyboxStrength == 0.0) {
+            float x = 0.5 * (normalize(ray.direction).y + 1.0);
+            finalColor = (1.0f - x) * vec3(1.0f, 1.0f, 1.0f) + x * vec3(0.0f, 0.7f, 1.0f);
+        }
+        else {
+            finalColor = SampleSkybox(ray.direction);
+        }
     }
 
     return finalColor;

@@ -20,5 +20,5 @@ private:
     glm::vec3 m_CamPos;
     float lastTime, deltaTime, currentTime;
 
-    uint32_t vao, vbo;
+    uint32_t vao, vbo, skyTex;
 };
