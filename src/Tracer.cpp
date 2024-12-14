@@ -1,5 +1,6 @@
 #include "Tracer.h"
 
+#include <GLFW/glfw3.h>
 #include "Window/Input.h"
 
 #include <stb/stb_image.h>
@@ -34,6 +35,12 @@ void Tracer::Run()
                 m_CamPos.y += 2.0f * deltaTime;
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
                 m_CamPos.y -= 2.0f * deltaTime;
+        }
+
+        // Update 
+        {
+            if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
+                break;
         }
 
         Render();

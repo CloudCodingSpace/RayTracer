@@ -42,6 +42,12 @@ struct HitInfo {
     bool didHit;
 };
 
+struct LightSource {
+    vec3 origin;
+    float intensity;
+    vec3 color;
+};
+
 vec3 RayAt(Ray ray, float t) {
     return ray.origin + ray.direction * t;
 }
@@ -50,7 +56,7 @@ vec3 SampleSkybox(vec3 dir) {
 	if (u_skyboxStrength == 0.0) return vec3(0.0);
 	
 	return min(vec3(u_skyboxCeiling), 
-            u_skyboxStrength*
+            u_skyboxStrength * 
             pow(texture(u_skyboxTexture, 
             vec2(0.5 + atan(dir.x, dir.z)/(2*PI), 
             0.5 + asin(-dir.y)/PI)).xyz, 
@@ -106,10 +112,16 @@ vec3 GetColor(Ray ray) {
     sphere.origin = vec3(0.0, 0.0, -2.0);
     sphere.radius = 0.5;
 
+    LightSource source;
+    source.color = vec3(1, 0, 0);
+    source.origin = vec3(-1, 1, 2);
+    source.intensity = 1.0;
+
     HitInfo info = RayHitSphere(ray, sphere);
     if(info.didHit) {
         vec3 normal = normalize(info.hitPoint - sphere.origin);
-        finalColor = normal;
+        vec3 dir = normalize(source.origin - info.hitPoint);
+        finalColor = source.intensity * (vec3(max(dot(normal, dir), 0.0)) * source.color);
     }
 
     if(finalColor == vec3(-1)) {
