@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "program": "${workspaceRoot}/build/Debug/GLTracer.exe",
+            "name": "debug launch of GLTRacer",
+            "type": "cppdbg",
+            "externalConsole": true,
+            "request": "launch",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

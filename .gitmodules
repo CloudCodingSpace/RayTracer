@@ -1,0 +1,9 @@
+[submodule "glfw"]
+	path = libs/glfw
+	url = https://github.com/CloudCodingSpace/GLFW
+[submodule "glm"]
+	path = libs/glm
+	url = https://github.com/CloudCodingSpace/glm
+[submodule "GLFW"]
+	path = GLFW
+	url = https://github.com/CloudCodingSpace/GLFW
