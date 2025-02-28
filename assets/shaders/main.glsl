@@ -51,6 +51,10 @@ float HitSphere(Sphere sphere, Ray ray) {
 		return INVALID;
 
     float closestT = (-b - sqrt(discriminant)) / (2.0f * a);
+
+    if (closestT < 0.0)
+        return INVALID;
+
     return closestT;
 }
 
