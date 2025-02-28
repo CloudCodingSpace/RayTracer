@@ -17,6 +17,8 @@ private:
     Window m_Window;
     Shader m_Shader;
 
+    bool m_Render = false;
+
     glm::vec3 m_CamPos;
     float lastTime, deltaTime, currentTime;
 

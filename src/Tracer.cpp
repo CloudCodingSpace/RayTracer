@@ -5,6 +5,10 @@
 
 #include <stb/stb_image.h>
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+
 void Tracer::Run()
 {
     Init();
@@ -19,8 +23,6 @@ void Tracer::Run()
             currentTime = glfwGetTime();
             deltaTime = currentTime - lastTime;
             lastTime = currentTime;
-
-            m_Window.SetTitle(m_Window.GetTitle() + " | FPS :- " + std::to_string(1.0f/deltaTime) + " | Delta :- " + std::to_string(deltaTime) + "s");
 
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_W))
                 m_CamPos.z -= 2.0f * deltaTime;
@@ -96,10 +98,30 @@ void Tracer::Init()
 
         glBindVertexArray(0);
     }
+    // ImGui
+    {
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.WindowRounding = 5.0f;
+        style.WindowPadding = ImVec2(0.0f, 0.0f);
+        style.WindowBorderSize = 0.1f;
+
+        ImGui::StyleColorsDark();
+    
+        ImGui_ImplGlfw_InitForOpenGL(m_Window.GetHandle(), true);
+        ImGui_ImplOpenGL3_Init("#version 330 core");
+    }
 }
 
 void Tracer::Cleanup()
 {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     m_Window.Destroy();
@@ -107,12 +129,33 @@ void Tracer::Cleanup()
 
 void Tracer::Render()
 {
-    m_Shader.Bind();
- 
-    auto info = m_Window.GetWindowInfo();
-    m_Shader.PutVec2("u_resolution", glm::vec2(info.width, info.height));
-    m_Shader.PutVec3("u_camPos", m_CamPos);
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
 
-    glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    ImGui::Begin("Settings");
+    ImGui::Text("This is the settings panel");
+
+    ImGui::Separator();
+
+    ImGui::Text("Delta Time: %.2fms", deltaTime * 1000);
+
+    ImGui::Checkbox("Render", &m_Render);
+
+    if(m_Render)
+    {
+        m_Shader.Bind();
+ 
+        auto info = m_Window.GetWindowInfo();
+        m_Shader.PutVec2("u_resolution", glm::vec2(info.width, info.height));
+        m_Shader.PutVec3("u_camPos", m_CamPos);
+
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+
+    ImGui::End();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
