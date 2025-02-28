@@ -53,7 +53,7 @@ void Tracer::Run()
 
 void Tracer::Init()
 {
-    m_CamPos = glm::vec3(0, 0, 0);
+    m_CamPos = glm::vec3(0, 0, 2);
     lastTime = 0.0f;
     currentTime = 0.0f;
     deltaTime = 0.0f;
