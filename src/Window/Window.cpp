@@ -153,8 +153,6 @@ void Window::FramebuffSizeCallback(GLFWwindow *window, int width, int height)
 
 	win->m_Info.width = width;
 	win->m_Info.height = height;
-
-	glViewport(0, 0, width, height);
 }
 
 void Window::WindowPosCallback(GLFWwindow *window, int xpos, int ypos)

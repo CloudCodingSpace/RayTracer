@@ -1,13 +1,13 @@
 #include "Tracer.h"
 
 #include <GLFW/glfw3.h>
+
+#include "GuiHelper.h"
 #include "Window/Input.h"
 
 #include <stb/stb_image.h>
 
 #include <imgui/imgui.h>
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_opengl3.h>
 
 void Tracer::Run()
 {
@@ -18,7 +18,7 @@ void Tracer::Run()
     {
         m_Window.Clear();
 
-        // Update
+        // Update camera
         {
             currentTime = glfwGetTime();
             deltaTime = currentTime - lastTime;
@@ -38,14 +38,50 @@ void Tracer::Run()
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
                 m_CamPos.y -= 2.0f * deltaTime;
         }
-
-        // Update 
+        // Update exit
         {
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
                 break;
         }
+        
+        // ImGui
+        {            
+            GuiHelper::StartFrame();
+            
+            ImGui::Begin("Scene");
+            
+            if(m_Render)
+            {
+                m_Fb.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+                m_Fb.Bind();
+                glViewport(0, 0, ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().x);
+                
+                Render(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+                
+                m_Fb.Unbind();
+                
+                ImGui::Image(reinterpret_cast<ImTextureID>(static_cast<uintptr_t>(m_Fb.GetTexture().GetHandle())), 
+                                    ImVec2(m_Fb.GetTexture().GetWidth(), m_Fb.GetTexture().GetHeight()), 
+                                    ImVec2(0, 1), ImVec2(1, 0));
+            }
+            
+            ImGui::End();
+            
+            ImGui::Begin("Settings");
+            ImGui::Text("This is the settings panel");
+            
+            ImGui::Spacing();
+            ImGui::Spacing();
+            
+            ImGui::Text("Delta Time: %.2fms", deltaTime * 1000);
+            
+            ImGui::Checkbox("Render", &m_Render);
+            
+            ImGui::End();
 
-        Render();
+            glViewport(0, 0, m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
+            GuiHelper::EndFrame();
+        }
 
         m_Window.Update();
     }
@@ -98,64 +134,32 @@ void Tracer::Init()
 
         glBindVertexArray(0);
     }
-    // ImGui
-    {
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-        ImGuiStyle& style = ImGui::GetStyle();
-        style.WindowRounding = 5.0f;
-        style.WindowPadding = ImVec2(0.0f, 0.0f);
-        style.WindowBorderSize = 0.1f;
+    GuiHelper::Init(m_Window);
 
-        ImGui::StyleColorsDark();
-    
-        ImGui_ImplGlfw_InitForOpenGL(m_Window.GetHandle(), true);
-        ImGui_ImplOpenGL3_Init("#version 330 core");
-    }
+    m_Fb.Init(m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
 }
 
 void Tracer::Cleanup()
 {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    GuiHelper::Shutdown();
+
+    m_Fb.Destroy();
+
+    m_Shader.Destroy();
 
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     m_Window.Destroy();
 }
 
-void Tracer::Render()
+void Tracer::Render(int width, int height)
 {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
+    m_Shader.Bind();
 
-    ImGui::Begin("Settings");
-    ImGui::Text("This is the settings panel");
+    m_Shader.PutVec2("u_resolution", glm::vec2(width, height));
+    m_Shader.PutVec3("u_camPos", m_CamPos);
 
-    ImGui::Separator();
-
-    ImGui::Text("Delta Time: %.2fms", deltaTime * 1000);
-
-    ImGui::Checkbox("Render", &m_Render);
-
-    if(m_Render)
-    {
-        m_Shader.Bind();
- 
-        auto info = m_Window.GetWindowInfo();
-        m_Shader.PutVec2("u_resolution", glm::vec2(info.width, info.height));
-        m_Shader.PutVec3("u_camPos", m_CamPos);
-
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
-
-    ImGui::End();
-
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 }
