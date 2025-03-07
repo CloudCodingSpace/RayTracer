@@ -25,4 +25,7 @@ private:
     float lastTime, deltaTime, currentTime;
 
     uint32_t vao, vbo;
+
+private:
+    void WriteToPngFile(std::string fileName, unsigned char* pixels);
 };

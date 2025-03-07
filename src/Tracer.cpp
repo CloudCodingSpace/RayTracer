@@ -1,11 +1,14 @@
 #include "Tracer.h"
 
+#include <filesystem>
+
 #include <GLFW/glfw3.h>
 
 #include "GuiHelper.h"
 #include "Window/Input.h"
 
 #include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
 
 #include <imgui/imgui.h>
 
@@ -18,7 +21,7 @@ void Tracer::Run()
     {
         m_Window.Clear();
 
-        // Update camera
+        // Checking keyevents
         {
             currentTime = glfwGetTime();
             deltaTime = currentTime - lastTime;
@@ -37,9 +40,7 @@ void Tracer::Run()
                 m_CamPos.y += 2.0f * deltaTime;
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
                 m_CamPos.y -= 2.0f * deltaTime;
-        }
-        // Update exit
-        {
+
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
                 break;
         }
@@ -77,6 +78,25 @@ void Tracer::Run()
             
             ImGui::Checkbox("Render", &m_Render);
             
+            ImGui::Spacing();
+            ImGui::Spacing();
+            
+            if(ImGui::Button("Save to file") && m_Render)
+            {
+                unsigned char* pixels = new unsigned char[m_Fb.GetTexture().GetWidth() * m_Fb.GetTexture().GetHeight() * 4];
+                
+                if(!std::filesystem::exists("output"))
+                {
+                    std::filesystem::create_directory("output");
+                }
+
+                m_Fb.GetTexture().GetPixels(pixels);
+
+                WriteToPngFile("output/img.png", pixels);
+
+                delete[] pixels;
+            }
+
             ImGui::End();
 
             glViewport(0, 0, m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
@@ -162,4 +182,9 @@ void Tracer::Render(int width, int height)
 
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+void Tracer::WriteToPngFile(std::string fileName, unsigned char* pixels)
+{
+    stbi_write_png(fileName.c_str(), m_Fb.GetTexture().GetWidth(), m_Fb.GetTexture().GetHeight(), 4, pixels, m_Fb.GetTexture().GetWidth() * 4);
 }
