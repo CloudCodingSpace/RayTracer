@@ -33,6 +33,9 @@ void Framebuffer::Resize(int32_t width, int32_t height)
     if(m_Texture.GetWidth() == width && m_Texture.GetHeight() == height)
         return;
 
+    if(width == 0 || height == 0)
+        return;
+
     Destroy();
 
     Init(width, height);
