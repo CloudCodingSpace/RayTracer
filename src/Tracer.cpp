@@ -101,6 +101,7 @@ void Tracer::Run()
 
             glViewport(0, 0, m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
             GuiHelper::EndFrame();
+            GuiHelper::Update(m_Window);
         }
 
         m_Window.Update();

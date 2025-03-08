@@ -8,5 +8,6 @@ public:
     static void Init(Window& window, bool dockspace = true);
     static void StartFrame();
     static void EndFrame();
+    static void Update(Window& window);
     static void Shutdown();
 };
