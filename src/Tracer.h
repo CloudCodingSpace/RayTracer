@@ -18,6 +18,7 @@ private:
     Window m_Window;
     Shader m_Shader;
     Framebuffer m_Fb;
+    Texture m_SkyboxTex;
 
     bool m_Render = false;
 

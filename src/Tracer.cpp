@@ -159,12 +159,24 @@ void Tracer::Init()
     GuiHelper::Init(m_Window);
 
     m_Fb.Init(m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
+    
+    // Skybox texture
+    {
+        stbi_set_flip_vertically_on_load(true);
+        int width, height, channels;
+        float* pixels = stbi_loadf("assets/skybox/s3.hdr", &width, &height, &channels, STBI_rgb_alpha);
+
+        m_SkyboxTex.Init(width, height, pixels, true);
+        
+        stbi_image_free(pixels);
+    }
 }
 
 void Tracer::Cleanup()
 {
     GuiHelper::Shutdown();
 
+    m_SkyboxTex.Destroy();
     m_Fb.Destroy();
 
     m_Shader.Destroy();
@@ -180,6 +192,10 @@ void Tracer::Render(int width, int height)
 
     m_Shader.PutVec2("u_resolution", glm::vec2(width, height));
     m_Shader.PutVec3("u_camPos", m_CamPos);
+
+    m_Shader.PutTex("t_Skybox", 0);
+    m_SkyboxTex.Active(1);
+    m_SkyboxTex.Bind();
 
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);

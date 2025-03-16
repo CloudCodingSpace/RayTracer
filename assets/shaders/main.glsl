@@ -20,6 +20,18 @@ out vec4 FragColor;
 uniform vec2 u_resolution;
 uniform vec3 u_camPos;
 
+uniform sampler2D t_Skybox;
+
+vec2 GetSkyboxTexCoord(vec3 rayDir) {
+    vec2 texCoord;
+    float theta = atan(rayDir.x, rayDir.z)/ (2.0 * PI);
+    float phi = asin(rayDir.y) / PI;
+    // Map spherical coordinates to texture coordinates
+    texCoord.x = theta + 0.5;
+    texCoord.y = phi + 0.5;
+    return texCoord;
+}
+
 struct Ray {
     vec3 origin;
     vec3 dir;
@@ -92,7 +104,10 @@ vec3 GetColor(Scene scene, Ray camRay) {
     vec3 color = vec3(0.0);
 
     if(payload.hitDist == INVALID)
+    {
+        color = texture(t_Skybox, GetSkyboxTexCoord(camRay.dir)).rgb;
         return color;
+    }
 
     color = scene.sphere.albedo;
 
