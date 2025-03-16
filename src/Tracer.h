@@ -3,6 +3,7 @@
 #include "Window/Window.h"
 #include "Shader.h"
 #include "Framebuffer.h"
+#include "Camera.h"
 
 class Tracer
 {
@@ -19,11 +20,11 @@ private:
     Shader m_Shader;
     Framebuffer m_Fb;
     Texture m_SkyboxTex;
+    Camera m_Camera;
 
     bool m_Render = false;
 
-    glm::vec3 m_CamPos;
-    float lastTime, deltaTime, currentTime;
+    float lastTime, deltaTime, currentTime, m_Exposure = 1.0f;
 
     uint32_t vao, vbo;
 

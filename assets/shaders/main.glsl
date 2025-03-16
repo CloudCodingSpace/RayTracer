@@ -17,18 +17,22 @@ const float INVALID = -1.0;
 
 out vec4 FragColor;
 
+uniform float m_SkyboxExposure;
+
 uniform vec2 u_resolution;
 uniform vec3 u_camPos;
+uniform vec3 u_camFront;
 
 uniform sampler2D t_Skybox;
 
 vec2 GetSkyboxTexCoord(vec3 rayDir) {
+    float theta = atan(rayDir.x, rayDir.z); 
+    float phi = asin(rayDir.y);
+
     vec2 texCoord;
-    float theta = atan(rayDir.x, rayDir.z)/ (2.0 * PI);
-    float phi = asin(rayDir.y) / PI;
-    // Map spherical coordinates to texture coordinates
-    texCoord.x = theta + 0.5;
-    texCoord.y = phi + 0.5;
+    texCoord.x = (theta / (PI * 2.0)) + 0.5; 
+    texCoord.y = (phi / PI) + 0.5;
+
     return texCoord;
 }
 
@@ -105,7 +109,7 @@ vec3 GetColor(Scene scene, Ray camRay) {
 
     if(payload.hitDist == INVALID)
     {
-        color = texture(t_Skybox, GetSkyboxTexCoord(camRay.dir)).rgb;
+        color = texture(t_Skybox, GetSkyboxTexCoord(camRay.dir)).rgb * m_SkyboxExposure;
         return color;
     }
 
@@ -131,7 +135,12 @@ void main() {
 
     Ray camRay;
     camRay.origin = u_camPos;
-    camRay.dir = vec3(uv, -1.0);
+
+    vec3 camRight = normalize(cross(vec3(0, 1, 0), u_camFront)); 
+    vec3 camUp = normalize(cross(u_camFront, camRight));
+    vec3 rayDir = normalize(u_camFront + camRight * uv.x + camUp * uv.y);
+    camRay.dir = rayDir;
+
 
     FragColor = vec4(GetColor(PrepScene(), camRay), 1.0);
 }

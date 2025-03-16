@@ -27,22 +27,26 @@ void Tracer::Run()
             deltaTime = currentTime - lastTime;
             lastTime = currentTime;
 
+            auto& m_CamPos = m_Camera.GetPos();
+            auto& m_CamFront = m_Camera.GetFront();
+            float speed = 2.0f * deltaTime;
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_W))
-                m_CamPos.z -= 2.0f * deltaTime;
+                m_CamPos += m_CamFront * speed;
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_S))
-                m_CamPos.z += 2.0f * deltaTime;
+                m_CamPos -= m_CamFront * speed;
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_A))
-                m_CamPos.x -= 2.0f * deltaTime;
+                m_CamPos += glm::normalize(glm::cross(m_CamFront, glm::vec3(0.0f, 1.0f, 0.0f))) * speed;
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_D))
-                m_CamPos.x += 2.0f * deltaTime;
-
+                m_CamPos -= glm::normalize(glm::cross(m_CamFront, glm::vec3(0.0f, 1.0f, 0.0f))) * speed;
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_SPACE))
-                m_CamPos.y += 2.0f * deltaTime;
+                m_CamPos += glm::vec3(0, 1.0f, 0) * speed;
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
-                m_CamPos.y -= 2.0f * deltaTime;
+                m_CamPos -= glm::vec3(0, 1.0f, 0) * speed;
 
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
                 break;
+
+            m_Camera.Update(m_Window);
         }
         
         // ImGui
@@ -77,6 +81,8 @@ void Tracer::Run()
             ImGui::Text("Delta Time: %.2fms", deltaTime * 1000);
             
             ImGui::Checkbox("Render", &m_Render);
+
+            ImGui::SliderFloat("Skybox exposure", &m_Exposure, 1.0f, 10.0f);
             
             ImGui::Spacing();
             ImGui::Spacing();
@@ -112,7 +118,6 @@ void Tracer::Run()
 
 void Tracer::Init()
 {
-    m_CamPos = glm::vec3(0, 0, 2);
     lastTime = 0.0f;
     currentTime = 0.0f;
     deltaTime = 0.0f;
@@ -164,7 +169,7 @@ void Tracer::Init()
     {
         stbi_set_flip_vertically_on_load(true);
         int width, height, channels;
-        float* pixels = stbi_loadf("assets/skybox/s3.hdr", &width, &height, &channels, STBI_rgb_alpha);
+        float* pixels = stbi_loadf("assets/skybox/s4.hdr", &width, &height, &channels, STBI_rgb_alpha);
 
         m_SkyboxTex.Init(width, height, pixels, true);
         
@@ -191,7 +196,9 @@ void Tracer::Render(int width, int height)
     m_Shader.Bind();
 
     m_Shader.PutVec2("u_resolution", glm::vec2(width, height));
-    m_Shader.PutVec3("u_camPos", m_CamPos);
+    m_Shader.PutVec3("u_camPos", m_Camera.GetPos());
+    m_Shader.PutVec3("u_camFront", m_Camera.GetFront());
+    m_Shader.PutFloat("m_SkyboxExposure", m_Exposure);
 
     m_Shader.PutTex("t_Skybox", 0);
     m_SkyboxTex.Active(1);
