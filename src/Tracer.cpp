@@ -243,5 +243,19 @@ void Tracer::Render(int width, int height)
 
 void Tracer::WriteToPngFile(std::string fileName, unsigned char* pixels)
 {
-    stbi_write_png(fileName.c_str(), m_Fb.GetTexture().GetWidth(), m_Fb.GetTexture().GetHeight(), 4, pixels, m_Fb.GetTexture().GetWidth() * 4);
+    int width = m_Fb.GetTexture().GetWidth();
+    int height = m_Fb.GetTexture().GetHeight();
+    int channels = 4;
+
+    unsigned char* flippedPixels = new unsigned char[width * height * channels];
+    for (int y = 0; y < height; y++) 
+    {
+        memcpy(flippedPixels + (height - 1 - y) * width * channels, 
+            pixels + y * width * channels, 
+            width * channels);
+    }
+
+    stbi_write_png(fileName.c_str(), width, height, channels, flippedPixels, width * channels);
+
+    delete[] flippedPixels;
 }
