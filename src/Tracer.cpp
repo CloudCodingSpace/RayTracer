@@ -4,7 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "GuiHelper.h"
+#include "Rendering/GuiHelper.h"
 #include "Window/Input.h"
 
 #include <stb/stb_image.h>
@@ -73,7 +73,6 @@ void Tracer::Run()
             ImGui::End();
             
             ImGui::Begin("Settings");
-            ImGui::Text("This is the settings panel");
             
             ImGui::Spacing();
             ImGui::Spacing();

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Window/Window.h"
-#include "Shader.h"
-#include "Framebuffer.h"
-#include "Camera.h"
+#include "Rendering/Shader.h"
+#include "Rendering/Framebuffer.h"
+#include "Rendering/Camera.h"
 
 class Tracer
 {
