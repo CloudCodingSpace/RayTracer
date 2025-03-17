@@ -29,5 +29,5 @@ private:
     uint32_t vao, vbo;
 
 private:
-    void WriteToPngFile(std::string fileName, unsigned char* pixels);
+    void WriteToPngFile(std::string fileName, unsigned char* pixels, int width, int height);
 };

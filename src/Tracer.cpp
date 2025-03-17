@@ -14,6 +14,8 @@
 
 #include <nfd.h>
 
+#include <thread>
+
 void Tracer::Run()
 {
     Init();
@@ -86,20 +88,25 @@ void Tracer::Run()
             ImGui::Spacing();
             ImGui::Spacing();
             
-            if(ImGui::Button("Save to file") && m_Render)
+            if (ImGui::Button("Save to file") && m_Render)
             {
-                unsigned char* pixels = new unsigned char[m_Fb.GetTexture().GetWidth() * m_Fb.GetTexture().GetHeight() * 4];
-                
-                if(!std::filesystem::exists("output"))
-                {
-                    std::filesystem::create_directory("output");
-                }
+                int width = m_Fb.GetTexture().GetWidth();
+                int height = m_Fb.GetTexture().GetHeight();
+                unsigned char* pixels = new unsigned char[width * height * 4];
 
                 m_Fb.GetTexture().GetPixels(pixels);
 
-                WriteToPngFile("output/img.png", pixels);
+                std::thread saveThread([this, pixels, width, height]() {
+                    if (!std::filesystem::exists("output"))
+                    {
+                        std::filesystem::create_directory("output");
+                    }
 
-                delete[] pixels;
+                    WriteToPngFile("output/img.png", pixels, width, height);
+                    delete[] pixels;
+                });
+
+                saveThread.detach();
             }
 
             ImGui::Separator();
@@ -241,10 +248,8 @@ void Tracer::Render(int width, int height)
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void Tracer::WriteToPngFile(std::string fileName, unsigned char* pixels)
+void Tracer::WriteToPngFile(std::string fileName, unsigned char* pixels, int width, int height)
 {
-    int width = m_Fb.GetTexture().GetWidth();
-    int height = m_Fb.GetTexture().GetHeight();
     int channels = 4;
 
     unsigned char* flippedPixels = new unsigned char[width * height * channels];
