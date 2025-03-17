@@ -12,6 +12,8 @@
 
 #include <imgui/imgui.h>
 
+#include <nfd.h>
+
 void Tracer::Run()
 {
     Init();
@@ -59,7 +61,7 @@ void Tracer::Run()
             {
                 m_Fb.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 m_Fb.Bind();
-                glViewport(0, 0, ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().x);
+                glViewport(0, 0, ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 
                 Render(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 
@@ -80,8 +82,6 @@ void Tracer::Run()
             ImGui::Text("Delta Time: %.2fms", deltaTime * 1000);
             
             ImGui::Checkbox("Render", &m_Render);
-
-            ImGui::SliderFloat("Skybox exposure", &m_Exposure, 1.0f, 10.0f);
             
             ImGui::Spacing();
             ImGui::Spacing();
@@ -102,6 +102,41 @@ void Tracer::Run()
                 delete[] pixels;
             }
 
+            ImGui::Separator();
+
+            if(ImGui::TreeNodeEx("Skybox", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
+            {
+                ImGui::Text("Skybox Exposure");
+                ImGui::SliderFloat("##skyboxExposure", &m_Exposure, 1.0f, 10.0f);
+                
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+
+                ImGui::Text("Select Skybox Image");
+                ImGui::Image((ImTextureID)(intptr_t)m_SkyboxTex.GetHandle(), ImVec2(96, 54), ImVec2(0, 1), ImVec2(1, 0));
+                if(ImGui::IsItemClicked())
+                {
+                    nfdchar_t* outPath = nullptr;
+                    nfdresult_t result = NFD_OpenDialog("hdr", nullptr, &outPath); 
+
+                    if (result == NFD_OKAY) {
+                        m_SkyboxTex.Destroy();
+                        {
+                            stbi_set_flip_vertically_on_load(true);
+                            int width, height, channels;
+                            float* pixels = stbi_loadf(outPath, &width, &height, &channels, STBI_rgb_alpha);
+
+                            m_SkyboxTex.Init(width, height, pixels, true);
+                        }
+
+                        free(outPath);
+                    }
+                }
+
+                ImGui::TreePop();
+            }
+
             ImGui::End();
 
             glViewport(0, 0, m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
@@ -109,6 +144,7 @@ void Tracer::Run()
             GuiHelper::Update(m_Window);
         }
 
+        m_Window.ToggleFullscreenMode(800, 600);
         m_Window.Update();
     }
 
@@ -171,8 +207,6 @@ void Tracer::Init()
         float* pixels = stbi_loadf("assets/skybox/s4.hdr", &width, &height, &channels, STBI_rgb_alpha);
 
         m_SkyboxTex.Init(width, height, pixels, true);
-        
-        stbi_image_free(pixels);
     }
 }
 

@@ -13,7 +13,10 @@ void GuiHelper::Init(Window& window, bool dockspace)
     if(dockspace)
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    ImGui::StyleColorsDark();    
+    ImGui::StyleColorsDark();
+
+    io.Fonts->AddFontFromFileTTF("assets/fonts/consolas.ttf", 20.0f);
+    io.Fonts->Build();
 
     ImGuiStyle& style = ImGui::GetStyle();
     style.WindowRounding = 0.0f;
