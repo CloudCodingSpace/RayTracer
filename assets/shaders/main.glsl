@@ -18,12 +18,15 @@ const float INVALID = -1.0;
 out vec4 FragColor;
 
 uniform float m_SkyboxExposure;
+uniform sampler2D t_Skybox;
 
 uniform vec2 u_resolution;
 uniform vec3 u_camPos;
 uniform vec3 u_camFront;
 
-uniform sampler2D t_Skybox;
+uniform vec3 u_SphereCenter;
+uniform vec3 u_SphereAlbedo;
+uniform float u_SphereRadius;
 
 vec2 GetSkyboxTexCoord(vec3 rayDir) {
     float theta = atan(rayDir.x, rayDir.z); 
@@ -58,9 +61,10 @@ struct Scene {
 };
 
 float HitSphere(Sphere sphere, Ray ray) {
+    vec3 origin = ray.origin - sphere.center;
     float a = dot(ray.dir, ray.dir);
-	float b = 2.0 * dot(ray.origin, ray.dir);
-	float c = dot(ray.origin, ray.origin) - sphere.radius * sphere.radius;
+	float b = 2.0 * dot(origin, ray.dir);
+	float c = dot(origin, origin) - sphere.radius * sphere.radius;
 
 	float discriminant = b * b - 4.0f * a * c;
 	if (discriminant < 0.0)
@@ -120,9 +124,9 @@ vec3 GetColor(Scene scene, Ray camRay) {
 
 Scene PrepScene() {
     Scene scene;
-    scene.sphere.albedo = vec3(1.0, 0.0, 0.0);
-    scene.sphere.center = vec3(0.0, 0.0, 0.0);
-    scene.sphere.radius = 0.5;
+    scene.sphere.albedo = u_SphereAlbedo;
+    scene.sphere.center = u_SphereCenter;
+    scene.sphere.radius = u_SphereRadius;
 
     return scene;
 }

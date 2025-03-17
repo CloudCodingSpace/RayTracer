@@ -31,26 +31,29 @@ void Tracer::Run()
             deltaTime = currentTime - lastTime;
             lastTime = currentTime;
 
-            auto& m_CamPos = m_Camera.GetPos();
-            auto& m_CamFront = m_Camera.GetFront();
-            float speed = 2.0f * deltaTime;
-            if(Input::IsKeyPressed(m_Window, GLFW_KEY_W))
-                m_CamPos += m_CamFront * speed;
-            if(Input::IsKeyPressed(m_Window, GLFW_KEY_S))
-                m_CamPos -= m_CamFront * speed;
-            if(Input::IsKeyPressed(m_Window, GLFW_KEY_A))
-                m_CamPos += glm::normalize(glm::cross(m_CamFront, glm::vec3(0.0f, 1.0f, 0.0f))) * speed;
-            if(Input::IsKeyPressed(m_Window, GLFW_KEY_D))
-                m_CamPos -= glm::normalize(glm::cross(m_CamFront, glm::vec3(0.0f, 1.0f, 0.0f))) * speed;
-            if(Input::IsKeyPressed(m_Window, GLFW_KEY_SPACE))
-                m_CamPos += glm::vec3(0, 1.0f, 0) * speed;
-            if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
-                m_CamPos -= glm::vec3(0, 1.0f, 0) * speed;
+            if(m_Render)
+            {
+                auto& m_CamPos = m_Camera.GetPos();
+                auto& m_CamFront = m_Camera.GetFront();
+                float speed = 2.0f * deltaTime;
+                if(Input::IsKeyPressed(m_Window, GLFW_KEY_W))
+                    m_CamPos += m_CamFront * speed;
+                if(Input::IsKeyPressed(m_Window, GLFW_KEY_S))
+                    m_CamPos -= m_CamFront * speed;
+                if(Input::IsKeyPressed(m_Window, GLFW_KEY_A))
+                    m_CamPos += glm::normalize(glm::cross(m_CamFront, glm::vec3(0.0f, 1.0f, 0.0f))) * speed;
+                if(Input::IsKeyPressed(m_Window, GLFW_KEY_D))
+                    m_CamPos -= glm::normalize(glm::cross(m_CamFront, glm::vec3(0.0f, 1.0f, 0.0f))) * speed;
+                if(Input::IsKeyPressed(m_Window, GLFW_KEY_SPACE))
+                    m_CamPos += glm::vec3(0, 1.0f, 0) * speed;
+                if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
+                    m_CamPos -= glm::vec3(0, 1.0f, 0) * speed;
+
+                m_Camera.Update(m_Window);
+            }    
 
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
                 break;
-
-            m_Camera.Update(m_Window);
         }
         
         // ImGui
@@ -140,6 +143,28 @@ void Tracer::Run()
                         free(outPath);
                     }
                 }
+
+                ImGui::TreePop();
+            }
+
+            if(ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
+            {
+                ImGui::Text("Sphere Center");
+                ImGui::SliderFloat3("##sphereCenter", &m_SphereCenter[0], -10.0f, 10.0f);
+                
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+
+                ImGui::Text("Sphere Albedo");
+                ImGui::ColorPicker3("##sphereAlbedo", &m_SphereAlbedo[0]);
+                
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+
+                ImGui::Text("Sphere Radius");
+                ImGui::SliderFloat("##sphereRadius", &m_SphereRadius, 0.2f, 100.0f);
 
                 ImGui::TreePop();
             }
@@ -239,8 +264,12 @@ void Tracer::Render(int width, int height)
     m_Shader.PutVec3("u_camPos", m_Camera.GetPos());
     m_Shader.PutVec3("u_camFront", m_Camera.GetFront());
     m_Shader.PutFloat("m_SkyboxExposure", m_Exposure);
-
     m_Shader.PutTex("t_Skybox", 0);
+    
+    m_Shader.PutVec3("u_SphereAlbedo", m_SphereAlbedo);
+    m_Shader.PutVec3("u_SphereCenter", m_SphereCenter);
+    m_Shader.PutFloat("u_SphereRadius", m_SphereRadius);
+
     m_SkyboxTex.Active(1);
     m_SkyboxTex.Bind();
 

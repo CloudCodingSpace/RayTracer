@@ -22,6 +22,7 @@ void GuiHelper::Init(Window& window, bool dockspace)
     style.WindowRounding = 0.0f;
     style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     style.WindowPadding = ImVec2(0.0f, 0.0f);
+    style.FramePadding = ImVec2(5, 5);
 
     ImGui_ImplGlfw_InitForOpenGL(window.GetHandle(), true);
     ImGui_ImplOpenGL3_Init("#version 330 core");    

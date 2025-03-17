@@ -22,10 +22,12 @@ private:
     Texture m_SkyboxTex;
     Camera m_Camera;
 
+    float m_Exposure = 1.0f, m_SphereRadius = 0.5f;
+    glm::vec3 m_SphereAlbedo = glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 m_SphereCenter = glm::vec3(0.0f, 0.0f, 0.0f);
+
     bool m_Render = false;
-
-    float lastTime, deltaTime, currentTime, m_Exposure = 1.0f;
-
+    float lastTime, deltaTime, currentTime;
     uint32_t vao, vbo;
 
 private:
