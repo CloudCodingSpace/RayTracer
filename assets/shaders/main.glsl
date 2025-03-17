@@ -26,6 +26,7 @@ uniform vec3 u_camFront;
 
 uniform vec3 u_SphereCenter;
 uniform vec3 u_SphereAlbedo;
+uniform vec3 u_LightDir;
 uniform float u_SphereRadius;
 
 vec2 GetSkyboxTexCoord(vec3 rayDir) {
@@ -117,7 +118,8 @@ vec3 GetColor(Scene scene, Ray camRay) {
         return color;
     }
 
-    color = scene.sphere.albedo;
+ 	float lightIntensity = max(dot(payload.worldNormal, -u_LightDir), 0.0f);
+    color = scene.sphere.albedo * lightIntensity;
 
     return color;
 }

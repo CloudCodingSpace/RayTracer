@@ -9,7 +9,7 @@ void GuiHelper::Init(Window& window, bool dockspace)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags = ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigFlags = ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_NavEnableKeyboard;
     if(dockspace)
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
