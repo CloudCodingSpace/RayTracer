@@ -17,7 +17,7 @@ const float INVALID = -1.0;
 
 out vec4 FragColor;
 
-uniform float m_SkyboxExposure;
+uniform float u_SkyboxExposure;
 uniform sampler2D t_Skybox;
 
 uniform vec2 u_resolution;
@@ -114,7 +114,7 @@ vec3 GetColor(Scene scene, Ray camRay) {
 
     if(payload.hitDist == INVALID)
     {
-        color = texture(t_Skybox, GetSkyboxTexCoord(camRay.dir)).rgb * m_SkyboxExposure;
+        color = texture(t_Skybox, GetSkyboxTexCoord(camRay.dir)).rgb * u_SkyboxExposure;
         return color;
     }
 

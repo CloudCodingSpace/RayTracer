@@ -118,7 +118,7 @@ void Tracer::Run()
             {
                 ImGui::Text("Skybox Exposure");
                 ImGui::SliderFloat("##skyboxExposure", &m_Exposure, 1.0f, 10.0f);
-                
+
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
@@ -129,17 +129,17 @@ void Tracer::Run()
                 {
                     nfdchar_t* outPath = nullptr;
                     nfdresult_t result = NFD_OpenDialog("hdr", nullptr, &outPath); 
-
+                    
                     if (result == NFD_OKAY) {
                         m_SkyboxTex.Destroy();
                         {
                             stbi_set_flip_vertically_on_load(true);
                             int width, height, channels;
                             float* pixels = stbi_loadf(outPath, &width, &height, &channels, STBI_rgb_alpha);
-
+                            
                             m_SkyboxTex.Init(width, height, pixels, true);
                         }
-
+                        
                         free(outPath);
                     }
                 }
@@ -270,7 +270,7 @@ void Tracer::Render(int width, int height)
     m_Shader.PutVec2("u_resolution", glm::vec2(width, height));
     m_Shader.PutVec3("u_camPos", m_Camera.GetPos());
     m_Shader.PutVec3("u_camFront", m_Camera.GetFront());
-    m_Shader.PutFloat("m_SkyboxExposure", m_Exposure);
+    m_Shader.PutFloat("u_SkyboxExposure", m_Exposure);
     m_Shader.PutTex("t_Skybox", 0);
     
     m_Shader.PutVec3("u_SphereAlbedo", m_SphereAlbedo);
