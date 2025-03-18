@@ -157,7 +157,7 @@ void Tracer::Run()
                 ImGui::Spacing(); 
 
                 ImGui::Text("Sphere Albedo");
-                ImGui::ColorPicker3("##sphereAlbedo", &m_SphereAlbedo[0]);
+                ImGui::ColorEdit3("##sphereAlbedo", &m_SphereAlbedo[0]);
                 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
