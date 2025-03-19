@@ -25,7 +25,6 @@ void Tracer::Run()
     {
         m_Window.Clear();
 
-        // Checking keyevents
         {
             currentTime = glfwGetTime();
             deltaTime = currentTime - lastTime;
@@ -49,7 +48,8 @@ void Tracer::Run()
                 if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
                     m_CamPos -= glm::vec3(0, 1.0f, 0) * speed;
 
-                m_Camera.Update(m_Window);
+                if(m_IsMouseHovered)
+                    m_Camera.Update(m_Window);
             }    
 
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
@@ -61,6 +61,8 @@ void Tracer::Run()
             GuiHelper::StartFrame();
             
             ImGui::Begin("Scene");
+
+            m_IsMouseHovered = ImGui::IsWindowHovered();
             
             if(m_Render)
             {

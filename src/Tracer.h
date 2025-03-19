@@ -27,7 +27,7 @@ private:
     glm::vec3 m_SphereCenter = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 m_LightDir = glm::vec3(-1.0f, -1.0f, -1.0f);
 
-    bool m_Render = false;
+    bool m_Render = false, m_IsMouseHovered = false;
     float lastTime, deltaTime, currentTime;
     uint32_t vao, vbo;
 
