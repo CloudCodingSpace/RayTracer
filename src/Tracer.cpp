@@ -85,6 +85,7 @@ void Tracer::Run()
             ImGui::Spacing();
             
             ImGui::Text("Delta Time: %.2fms", deltaTime * 1000);
+            ImGui::Text("%.0f FPS", 1.0f/deltaTime);
             
             ImGui::Checkbox("Render", &m_Render);
             
