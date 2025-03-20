@@ -48,7 +48,7 @@ void Tracer::Run()
                 if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
                     m_CamPos -= glm::vec3(0, 1.0f, 0) * speed;
 
-                if(m_IsMouseHovered)
+                if(m_IsMouseHovered || !m_Camera.IsFirstMouseUsage())
                     m_Camera.Update(m_Window);
             }    
 

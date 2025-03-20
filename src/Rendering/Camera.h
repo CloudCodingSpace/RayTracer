@@ -11,6 +11,7 @@ public:
 
     inline glm::vec3& GetPos() { return m_CamPos; }
     inline glm::vec3& GetFront() { return m_CamFront; }
+    inline bool IsFirstMouseUsage() { return firstMouse; }
 private:
     glm::vec3 m_CamPos = glm::vec3(0, 0, 2);
     glm::vec3 m_CamFront = glm::vec3(0.0f, 0.0f, -1.0f);
