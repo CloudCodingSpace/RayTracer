@@ -173,6 +173,13 @@ void Tracer::Run()
                         ImGui::Text("Sphere Radius");
                         ImGui::SliderFloat("##sphereRadius", &m_Scene.spheres[i].radius, 0.2f, 100.0f);
 
+                        ImGui::Spacing(); 
+                        ImGui::Spacing(); 
+                        ImGui::Spacing(); 
+
+                        ImGui::Text("Sphere Metallic");
+                        ImGui::SliderFloat("##sphereMetallic", &m_Scene.spheres[i].metallic, 0.2f, 1.0f);
+
                         ImGui::TreePop();
                     }
                 }
@@ -292,6 +299,7 @@ void Tracer::Render(int width, int height)
     m_Shader.PutVec3("u_SphereAlbedo", m_Scene.spheres[0].albedo);
     m_Shader.PutVec3("u_SphereCenter", m_Scene.spheres[0].center);
     m_Shader.PutFloat("u_SphereRadius", m_Scene.spheres[0].radius);
+    m_Shader.PutFloat("u_Metallic", m_Scene.spheres[0].metallic);
     m_Shader.PutVec3("u_LightDir", m_LightDir);
 
     m_SkyboxTex.Active(1);
