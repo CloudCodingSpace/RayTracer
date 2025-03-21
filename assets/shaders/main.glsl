@@ -122,7 +122,7 @@ vec3 GetColor(Scene scene, Ray camRay) {
  	// float lightIntensity = max(dot(payload.worldNormal, -u_LightDir), 0.0f);
     // color = scene.sphere.albedo * lightIntensity;
 
-    color = texture(t_Skybox, GetSkyboxTexCoord(reflect(camRay.dir, payload.worldNormal))).rgb * u_Metallic * u_SphereAlbedo;
+    color = texture(t_Skybox, GetSkyboxTexCoord(reflect(camRay.dir, payload.worldNormal))).rgb * u_Metallic * u_SphereAlbedo * u_SkyboxExposure;
 
     return color;
 }
