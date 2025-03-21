@@ -5,6 +5,8 @@
 #include "Rendering/Framebuffer.h"
 #include "Rendering/Camera.h"
 
+#include "Scene.h"
+
 class Tracer
 {
 public:
@@ -22,10 +24,9 @@ private:
     Texture m_SkyboxTex;
     Camera m_Camera;
 
-    float m_Exposure = 1.0f, m_SphereRadius = 0.5f;
-    glm::vec3 m_SphereAlbedo = glm::vec3(1.0f, 0.0f, 0.0f);
-    glm::vec3 m_SphereCenter = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 m_LightDir = glm::vec3(-1.0f, -1.0f, -1.0f);
+    float m_Exposure = 1.0f;
+    glm::vec3 m_LightDir = glm::vec3(-1.0f);
+    Scene m_Scene;
 
     bool m_Render = false, m_IsMouseHovered = false;
     float lastTime, deltaTime, currentTime;

@@ -152,29 +152,37 @@ void Tracer::Run()
 
             if(ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
-                ImGui::Text("Sphere Center");
-                ImGui::SliderFloat3("##sphereCenter", &m_SphereCenter[0], -10.0f, 10.0f);
+                for(int i = 0; i < m_Scene.spheres.size(); i++)
+                {
+                    if(ImGui::TreeNodeEx(("Sphere " + std::to_string(i + 1)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
+                    {
+                        ImGui::Text("Sphere Center");
+                        ImGui::SliderFloat3("##sphereCenter", &m_Scene.spheres[i].center[0], -100.0f, 100.0f);
+                        
+                        ImGui::Spacing(); 
+                        ImGui::Spacing(); 
+                        ImGui::Spacing(); 
+
+                        ImGui::Text("Sphere Albedo");
+                        ImGui::ColorEdit3("##sphereAlbedo", &m_Scene.spheres[i].albedo[0]);
+                        
+                        ImGui::Spacing(); 
+                        ImGui::Spacing(); 
+                        ImGui::Spacing(); 
+
+                        ImGui::Text("Sphere Radius");
+                        ImGui::SliderFloat("##sphereRadius", &m_Scene.spheres[i].radius, 0.2f, 100.0f);
+
+                        ImGui::TreePop();
+                    }
+                }
+
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
                 
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-
-                ImGui::Text("Sphere Albedo");
-                ImGui::ColorEdit3("##sphereAlbedo", &m_SphereAlbedo[0]);
-                
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-
-                ImGui::Text("Sphere Radius");
-                ImGui::SliderFloat("##sphereRadius", &m_SphereRadius, 0.2f, 100.0f);
-
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-
                 ImGui::Text("Light Direction");
-                ImGui::SliderFloat3("##sphereRadius", &m_LightDir[0], -10.0f, 10.0f);
+                ImGui::SliderFloat3("##sphereRadius", &m_LightDir[0], -1.0f, 1.0f);
 
                 ImGui::TreePop();
             }
@@ -250,6 +258,11 @@ void Tracer::Init()
 
         m_SkyboxTex.Init(width, height, pixels, true);
     }
+
+    // Scene
+    {
+        m_Scene.spheres.push_back(Sphere{});
+    }
 }
 
 void Tracer::Cleanup()
@@ -276,10 +289,10 @@ void Tracer::Render(int width, int height)
     m_Shader.PutFloat("u_SkyboxExposure", m_Exposure);
     m_Shader.PutTex("t_Skybox", 0);
     
-    m_Shader.PutVec3("u_SphereAlbedo", m_SphereAlbedo);
-    m_Shader.PutVec3("u_SphereCenter", m_SphereCenter);
+    m_Shader.PutVec3("u_SphereAlbedo", m_Scene.spheres[0].albedo);
+    m_Shader.PutVec3("u_SphereCenter", m_Scene.spheres[0].center);
+    m_Shader.PutFloat("u_SphereRadius", m_Scene.spheres[0].radius);
     m_Shader.PutVec3("u_LightDir", m_LightDir);
-    m_Shader.PutFloat("u_SphereRadius", m_SphereRadius);
 
     m_SkyboxTex.Active(1);
     m_SkyboxTex.Bind();
