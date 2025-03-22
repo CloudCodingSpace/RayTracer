@@ -1,5 +1,5 @@
 @type vertex
-#version 330 core
+#version 450 core
 
 layout (location = 0) in vec3 aPos;
 
@@ -9,7 +9,7 @@ void main()
 }
 
 @type fragment
-#version 330 core
+#version 450 core
 
 const float PI = 3.141592653589793;
 const float EPS = 1e-4;
@@ -30,13 +30,14 @@ struct HitPayload {
 
 struct Sphere {
     vec3 albedo;
-    vec3 center;
     float radius;
-    float metallic;
+    vec3 center;
+    float padding;
 };
 
 struct Scene {
-    Sphere sphere;
+    int sphereIdx;
+    vec3 lightDir;
 };
 
 uniform float u_SkyboxExposure;
@@ -46,11 +47,13 @@ uniform vec2 u_resolution;
 uniform vec3 u_camPos;
 uniform vec3 u_camFront;
 
-uniform vec3 u_SphereCenter;
-uniform vec3 u_SphereAlbedo;
-uniform float u_SphereRadius;
 uniform vec3 u_LightDir;
-uniform float u_Metallic;
+
+uniform int u_SphereCount;
+
+layout(std430, binding = 0) buffer SphereData {
+    Sphere spheres[];
+};
 
 vec2 GetSkyboxTexCoord(vec3 rayDir) {
     float theta = atan(rayDir.x, rayDir.z); 
@@ -84,11 +87,13 @@ float HitSphere(Sphere sphere, Ray ray) {
 HitPayload OnHit(Scene scene, Ray ray, float hitDist) {
     HitPayload payload;
 
-    vec3 origin = ray.origin - scene.sphere.center;
+    Sphere sphere = spheres[scene.sphereIdx];
+
+    vec3 origin = ray.origin - sphere.center;
 	payload.worldPos = origin + ray.dir * hitDist;
 	payload.worldNormal = normalize(payload.worldPos);
 
-	payload.worldPos += scene.sphere.center;
+	payload.worldPos += sphere.center;
 
     return payload;
 }
@@ -101,12 +106,25 @@ HitPayload Miss(Scene scene, Ray ray) {
 }
 
 HitPayload TraceRay(Scene scene, Ray ray) {
-    float hitDist = HitSphere(scene.sphere, ray);
+    float closestHitDist = 1e10;
+    float sphereIdx = INVALID;
 
-    if(hitDist == INVALID)
+    for(int i = 0; i < u_SphereCount; i++) {
+        float hitDist = HitSphere(spheres[i], ray);
+
+        if(hitDist == INVALID)
+            continue;
+
+        if(hitDist < closestHitDist) {
+            closestHitDist = hitDist;
+            sphereIdx = i;
+        }
+    }
+
+    if(closestHitDist == 1e10)
         return Miss(scene, ray);
     else
-        return OnHit(scene, ray, hitDist);
+        return OnHit(scene, ray, closestHitDist);
 }
 
 vec3 GetColor(Scene scene, Ray camRay) {
@@ -120,18 +138,17 @@ vec3 GetColor(Scene scene, Ray camRay) {
         return color;
     }
 
- 	float lightIntensity = max(dot(payload.worldNormal, -u_LightDir), 0.0f);
-    color = scene.sphere.albedo * lightIntensity * texture(t_Skybox, GetSkyboxTexCoord(reflect(camRay.dir, payload.worldNormal))).rgb * scene.sphere.metallic * u_SkyboxExposure;
+    Sphere sphere = spheres[scene.sphereIdx];
+
+ 	float lightIntensity = max(dot(payload.worldNormal, -scene.lightDir), 0.0f);
+    color = sphere.albedo * lightIntensity;
 
     return color;
 }
 
 Scene PrepScene() {
     Scene scene;
-    scene.sphere.albedo = u_SphereAlbedo;
-    scene.sphere.center = u_SphereCenter;
-    scene.sphere.radius = u_SphereRadius;
-    scene.sphere.metallic = u_Metallic;
+    scene.lightDir = u_LightDir;
 
     return scene;
 }
@@ -149,7 +166,6 @@ void main() {
     vec3 camUp = normalize(cross(u_camFront, camRight));
     vec3 rayDir = normalize(u_camFront + camRight * uv.x + camUp * uv.y);
     camRay.dir = rayDir;
-
 
     FragColor = vec4(GetColor(PrepScene(), camRay), 1.0);
 }

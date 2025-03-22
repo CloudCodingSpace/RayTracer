@@ -30,7 +30,7 @@ private:
 
     bool m_Render = false, m_IsMouseHovered = false;
     float lastTime, deltaTime, currentTime;
-    uint32_t vao, vbo;
+    uint32_t vao, vbo, ssbo;
 
 private:
     void WriteToPngFile(std::string fileName, unsigned char* pixels, int width, int height);

@@ -173,13 +173,6 @@ void Tracer::Run()
                         ImGui::Text("Sphere Radius");
                         ImGui::SliderFloat("##sphereRadius", &m_Scene.spheres[i].radius, 0.2f, 100.0f);
 
-                        ImGui::Spacing(); 
-                        ImGui::Spacing(); 
-                        ImGui::Spacing(); 
-
-                        ImGui::Text("Sphere Metallic");
-                        ImGui::SliderFloat("##sphereMetallic", &m_Scene.spheres[i].metallic, 0.2f, 1.0f);
-
                         ImGui::TreePop();
                     }
                 }
@@ -270,6 +263,15 @@ void Tracer::Init()
     {
         m_Scene.spheres.push_back(Sphere{});
     }
+    // SSBO
+    {
+        glGenBuffers(1, &ssbo);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Sphere) * m_Scene.spheres.size(), m_Scene.spheres.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    }
 }
 
 void Tracer::Cleanup()
@@ -288,6 +290,10 @@ void Tracer::Cleanup()
 
 void Tracer::Render(int width, int height)
 {
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(Sphere) * m_Scene.spheres.size(), m_Scene.spheres.data());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+
     m_Shader.Bind();
 
     m_Shader.PutVec2("u_resolution", glm::vec2(width, height));
@@ -296,10 +302,7 @@ void Tracer::Render(int width, int height)
     m_Shader.PutFloat("u_SkyboxExposure", m_Exposure);
     m_Shader.PutTex("t_Skybox", 0);
     
-    m_Shader.PutVec3("u_SphereAlbedo", m_Scene.spheres[0].albedo);
-    m_Shader.PutVec3("u_SphereCenter", m_Scene.spheres[0].center);
-    m_Shader.PutFloat("u_SphereRadius", m_Scene.spheres[0].radius);
-    m_Shader.PutFloat("u_Metallic", m_Scene.spheres[0].metallic);
+    m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
     m_Shader.PutVec3("u_LightDir", m_LightDir);
 
     m_SkyboxTex.Active(1);
