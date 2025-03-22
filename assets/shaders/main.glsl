@@ -17,6 +17,28 @@ const float INVALID = -1.0;
 
 out vec4 FragColor;
 
+struct Ray {
+    vec3 origin;
+    vec3 dir;
+};
+
+struct HitPayload {
+    float hitDist;
+    vec3 worldPos;
+    vec3 worldNormal;
+};
+
+struct Sphere {
+    vec3 albedo;
+    vec3 center;
+    float radius;
+    float metallic;
+};
+
+struct Scene {
+    Sphere sphere;
+};
+
 uniform float u_SkyboxExposure;
 uniform sampler2D t_Skybox;
 
@@ -40,27 +62,6 @@ vec2 GetSkyboxTexCoord(vec3 rayDir) {
 
     return texCoord;
 }
-
-struct Ray {
-    vec3 origin;
-    vec3 dir;
-};
-
-struct HitPayload {
-    float hitDist;
-    vec3 worldPos;
-    vec3 worldNormal;
-};
-
-struct Sphere {
-    vec3 albedo;
-    vec3 center;
-    float radius;
-};
-
-struct Scene {
-    Sphere sphere;
-};
 
 float HitSphere(Sphere sphere, Ray ray) {
     vec3 origin = ray.origin - sphere.center;
@@ -119,10 +120,8 @@ vec3 GetColor(Scene scene, Ray camRay) {
         return color;
     }
 
- 	// float lightIntensity = max(dot(payload.worldNormal, -u_LightDir), 0.0f);
-    // color = scene.sphere.albedo * lightIntensity;
-
-    color = texture(t_Skybox, GetSkyboxTexCoord(reflect(camRay.dir, payload.worldNormal))).rgb * u_Metallic * u_SphereAlbedo * u_SkyboxExposure;
+ 	float lightIntensity = max(dot(payload.worldNormal, -u_LightDir), 0.0f);
+    color = scene.sphere.albedo * lightIntensity * texture(t_Skybox, GetSkyboxTexCoord(reflect(camRay.dir, payload.worldNormal))).rgb * scene.sphere.metallic * u_SkyboxExposure;
 
     return color;
 }
@@ -132,6 +131,7 @@ Scene PrepScene() {
     scene.sphere.albedo = u_SphereAlbedo;
     scene.sphere.center = u_SphereCenter;
     scene.sphere.radius = u_SphereRadius;
+    scene.sphere.metallic = u_Metallic;
 
     return scene;
 }
