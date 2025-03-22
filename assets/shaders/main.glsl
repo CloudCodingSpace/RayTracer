@@ -105,9 +105,9 @@ HitPayload Miss(Scene scene, Ray ray) {
     return payload;
 }
 
-HitPayload TraceRay(Scene scene, Ray ray) {
+HitPayload TraceRay(inout Scene scene, Ray ray) {
     float closestHitDist = 1e10;
-    float sphereIdx = INVALID;
+    int sphereIdx;
 
     for(int i = 0; i < u_SphereCount; i++) {
         float hitDist = HitSphere(spheres[i], ray);
@@ -120,6 +120,8 @@ HitPayload TraceRay(Scene scene, Ray ray) {
             sphereIdx = i;
         }
     }
+
+    scene.sphereIdx = sphereIdx;
 
     if(closestHitDist == 1e10)
         return Miss(scene, ray);

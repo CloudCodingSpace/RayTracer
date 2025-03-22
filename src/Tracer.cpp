@@ -157,21 +157,21 @@ void Tracer::Run()
                     if(ImGui::TreeNodeEx(("Sphere " + std::to_string(i + 1)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
                     {
                         ImGui::Text("Sphere Center");
-                        ImGui::SliderFloat3("##sphereCenter", &m_Scene.spheres[i].center[0], -100.0f, 100.0f);
+                        ImGui::SliderFloat3(("##sphereCenter" + std::to_string(i)).c_str(), &m_Scene.spheres[i].center[0], -100.0f, 100.0f);
                         
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
 
                         ImGui::Text("Sphere Albedo");
-                        ImGui::ColorEdit3("##sphereAlbedo", &m_Scene.spheres[i].albedo[0]);
+                        ImGui::ColorEdit3(("##sphereAlbedo" + std::to_string(i)).c_str(), &m_Scene.spheres[i].albedo[0]);
                         
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
 
                         ImGui::Text("Sphere Radius");
-                        ImGui::SliderFloat("##sphereRadius", &m_Scene.spheres[i].radius, 0.2f, 100.0f);
+                        ImGui::SliderFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.2f, 100.0f);
 
                         ImGui::TreePop();
                     }
@@ -182,7 +182,21 @@ void Tracer::Run()
                 ImGui::Spacing(); 
                 
                 ImGui::Text("Light Direction");
-                ImGui::SliderFloat3("##sphereRadius", &m_LightDir[0], -1.0f, 1.0f);
+                ImGui::SliderFloat3("##lightDirection", &m_LightDir[0], -1.0f, 1.0f);
+
+                if(ImGui::Button("Add a sphere"))
+                {
+                    m_Scene.spheres.push_back(Sphere());
+
+                    glDeleteBuffers(1, &ssbo);
+
+                    glGenBuffers(1, &ssbo);
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Sphere) * m_Scene.spheres.size(), m_Scene.spheres.data(), GL_DYNAMIC_DRAW);
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+                }
 
                 ImGui::TreePop();
             }
