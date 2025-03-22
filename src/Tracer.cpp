@@ -120,7 +120,7 @@ void Tracer::Run()
             if(ImGui::TreeNodeEx("Skybox", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
                 ImGui::Text("Skybox Exposure");
-                ImGui::SliderFloat("##skyboxExposure", &m_Exposure, 1.0f, 10.0f);
+                ImGui::DragFloat("##skyboxExposure", &m_Exposure, 0.1f, 1.0f, 10.0f);
 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
@@ -157,7 +157,7 @@ void Tracer::Run()
                     if(ImGui::TreeNodeEx(("Sphere " + std::to_string(i + 1)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
                     {
                         ImGui::Text("Sphere Center");
-                        ImGui::SliderFloat3(("##sphereCenter" + std::to_string(i)).c_str(), &m_Scene.spheres[i].center[0], -100.0f, 100.0f);
+                        ImGui::DragFloat3(("##sphereCenter" + std::to_string(i)).c_str(), &m_Scene.spheres[i].center[0], 0.1f, -100.0f, 100.0f);
                         
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
@@ -171,7 +171,7 @@ void Tracer::Run()
                         ImGui::Spacing(); 
 
                         ImGui::Text("Sphere Radius");
-                        ImGui::SliderFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.2f, 100.0f);
+                        ImGui::DragFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.1f, 0.2f, 100.0f);
 
                         ImGui::TreePop();
                     }
@@ -182,7 +182,7 @@ void Tracer::Run()
                 ImGui::Spacing(); 
                 
                 ImGui::Text("Light Direction");
-                ImGui::SliderFloat3("##lightDirection", &m_LightDir[0], -1.0f, 1.0f);
+                ImGui::DragFloat3("##lightDirection", &m_LightDir[0], 0.1f, -1.0f, 1.0f);
 
                 if(ImGui::Button("Add a sphere"))
                 {
