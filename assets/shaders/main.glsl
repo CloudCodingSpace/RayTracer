@@ -32,7 +32,6 @@ struct Sphere {
     vec3 albedo;
     float radius;
     vec3 center;
-    float padding;
 };
 
 struct Scene {
