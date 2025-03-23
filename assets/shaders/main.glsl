@@ -54,6 +54,13 @@ layout(std430, binding = 0) buffer SphereData {
     Sphere spheres[];
 };
 
+uint rndm_pcg_hash(inout uint input)
+{
+    uint state = input * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
 vec2 GetSkyboxTexCoord(vec3 rayDir) {
     float theta = atan(rayDir.x, rayDir.z); 
     float phi = asin(rayDir.y);
