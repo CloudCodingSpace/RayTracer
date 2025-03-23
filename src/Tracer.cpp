@@ -32,25 +32,9 @@ void Tracer::Run()
 
             if(m_Render)
             {
-                auto& m_CamPos = m_Camera.GetPos();
-                auto& m_CamFront = m_Camera.GetFront();
-                float speed = 2.0f * deltaTime;
-                if(Input::IsKeyPressed(m_Window, GLFW_KEY_W))
-                    m_CamPos += m_CamFront * speed;
-                if(Input::IsKeyPressed(m_Window, GLFW_KEY_S))
-                    m_CamPos -= m_CamFront * speed;
-                if(Input::IsKeyPressed(m_Window, GLFW_KEY_A))
-                    m_CamPos += glm::normalize(glm::cross(m_CamFront, glm::vec3(0.0f, 1.0f, 0.0f))) * speed;
-                if(Input::IsKeyPressed(m_Window, GLFW_KEY_D))
-                    m_CamPos -= glm::normalize(glm::cross(m_CamFront, glm::vec3(0.0f, 1.0f, 0.0f))) * speed;
-                if(Input::IsKeyPressed(m_Window, GLFW_KEY_SPACE))
-                    m_CamPos += glm::vec3(0, 1.0f, 0) * speed;
-                if(Input::IsKeyPressed(m_Window, GLFW_KEY_LEFT_SHIFT))
-                    m_CamPos -= glm::vec3(0, 1.0f, 0) * speed;
-
                 if(m_IsMouseHovered || !m_Camera.IsFirstMouseUsage())
-                    m_Camera.Update(m_Window);
-            }    
+                    m_Camera.Update(m_Window, deltaTime);
+            }
 
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
                 break;
