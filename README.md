@@ -29,3 +29,11 @@ This project uses a couple of dependencies. Namely :-
 - ImGUI
 - GLFW
 - GLAD
+
+## Features
+ - Can render a hdri panorama/equirectangular image as a skybox
+ - Can select the hdri panorama/equirectangular image during runtime
+ - Can save the scene as an png image, found at output/img.png that is present in the same folder as the RayTracer executable.
+ - Can render multiple spheres
+ - Can add spheres during runtime
+ - Can change the sphere properties during runtime through ImGui
