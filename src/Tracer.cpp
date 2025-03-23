@@ -32,7 +32,7 @@ void Tracer::Run()
 
             if(m_Render)
             {
-                if(m_IsMouseHovered || !m_Camera.IsFirstMouseUsage())
+                if(m_IsSceneHovered || !m_Camera.IsFirstMouseUsage())
                     m_Camera.Update(m_Window, deltaTime);
             }
 
@@ -46,7 +46,7 @@ void Tracer::Run()
             
             ImGui::Begin("Scene");
 
-            m_IsMouseHovered = ImGui::IsWindowHovered();
+            m_IsSceneHovered = ImGui::IsWindowHovered();
             
             if(m_Render)
             {

@@ -28,7 +28,7 @@ private:
     glm::vec3 m_LightDir = glm::vec3(-1.0f);
     Scene m_Scene;
 
-    bool m_Render = false, m_IsMouseHovered = false;
+    bool m_Render = false, m_IsSceneHovered = false;
     float lastTime, deltaTime, currentTime;
     uint32_t vao, vbo, ssbo;
 
