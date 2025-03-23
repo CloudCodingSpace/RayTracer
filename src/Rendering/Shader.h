@@ -28,6 +28,7 @@ public:
     void PutMat3(std::string name, glm::mat3 data);
     void PutMat4(std::string name, glm::mat4 data);
     void PutInt(std::string name, int data);
+    void PutUint(std::string name, uint32_t data);
     void PutFloat(std::string name, float data);
 private:
     void ReadFile(std::string path); 

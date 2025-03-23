@@ -196,6 +196,12 @@ void Shader::PutInt(std::string name, int data)
     glUniform1i(glGetUniformLocation(m_pID, name.c_str()), data);
 }
 
+void Shader::PutUint(std::string name, uint32_t data)
+{
+    Bind();
+    glUniform1ui(glGetUniformLocation(m_pID, name.c_str()), data);
+}
+
 void Shader::PutFloat(std::string name, float data)
 {
     Bind();

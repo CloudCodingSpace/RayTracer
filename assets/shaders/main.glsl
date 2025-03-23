@@ -32,11 +32,13 @@ struct Sphere {
     vec3 albedo;
     float radius;
     vec3 center;
+    float roughness;
 };
 
 struct Scene {
     int sphereIdx;
     vec3 lightDir;
+    uint rndmSeed;
 };
 
 uniform float u_SkyboxExposure;
@@ -49,14 +51,15 @@ uniform vec3 u_camFront;
 uniform vec3 u_LightDir;
 
 uniform int u_SphereCount;
+uniform uint u_RndmSeed;
 
 layout(std430, binding = 0) buffer SphereData {
     Sphere spheres[];
 };
 
-uint rndm_pcg_hash(inout uint input)
+uint rndm_pcg_hash(inout uint seed)
 {
-    uint state = input * 747796405u + 2891336453u;
+    uint state = seed * 747796405u + 2891336453u;
     uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     return (word >> 22u) ^ word;
 }
@@ -157,6 +160,7 @@ vec3 GetColor(Scene scene, Ray camRay) {
 Scene PrepScene() {
     Scene scene;
     scene.lightDir = u_LightDir;
+    scene.rndmSeed = u_RndmSeed;
 
     return scene;
 }

@@ -15,6 +15,8 @@
 #include <nfd.h>
 
 #include <thread>
+#include <ctime>
+#include <cstdlib>
 
 void Tracer::Run()
 {
@@ -153,9 +155,16 @@ void Tracer::Run()
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
-
+                        
                         ImGui::Text("Sphere Radius");
                         ImGui::DragFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.1f, 0.2f, 100.0f);
+                        
+                        ImGui::Spacing(); 
+                        ImGui::Spacing(); 
+                        ImGui::Spacing(); 
+                        
+                        ImGui::Text("Sphere Roughness");
+                        ImGui::DragFloat(("##sphereRoughness" + std::to_string(i)).c_str(), &m_Scene.spheres[i].roughness, 0.1f, 0.0f, 1.0f);
 
                         ImGui::TreePop();
                     }
@@ -166,7 +175,7 @@ void Tracer::Run()
                 ImGui::Spacing(); 
                 
                 ImGui::Text("Light Direction");
-                ImGui::DragFloat3("##lightDirection", &m_LightDir[0], 0.1f, -1.0f, 1.0f);
+                ImGui::DragFloat3("##lightDirection", &m_LightDir[0], 0.01f, -1.0f, 1.0f);
 
                 if(ImGui::Button("Add a sphere"))
                 {
@@ -300,7 +309,10 @@ void Tracer::Render(int width, int height)
     m_Shader.PutFloat("u_SkyboxExposure", m_Exposure);
     m_Shader.PutTex("t_Skybox", 0);
     
+    srand(time(0));
+
     m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
+    m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
     m_Shader.PutVec3("u_LightDir", m_LightDir);
 
     m_SkyboxTex.Active(1);
