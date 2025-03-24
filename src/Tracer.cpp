@@ -135,9 +135,41 @@ void Tracer::Run()
 
                 ImGui::TreePop();
             }
-
+            
             if(ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
+                ImGui::Text("Light Direction");
+                ImGui::DragFloat3("##lightDirection", &m_LightDir[0], 0.01f, -1.0f, 1.0f);
+                
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                
+                ImGui::Text("Max Bounces Per Ray");
+                ImGui::DragInt("##maxBounces", &m_MaxBounces, 1.0f, 1, 100);
+                
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+
+                if(ImGui::Button("Add a sphere"))
+                {
+                    m_Scene.spheres.push_back(Sphere());
+    
+                    glDeleteBuffers(1, &ssbo);
+    
+                    glGenBuffers(1, &ssbo);
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Sphere) * m_Scene.spheres.size(), m_Scene.spheres.data(), GL_DYNAMIC_DRAW);
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+    
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+                }
+
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                
                 for(int i = 0; i < m_Scene.spheres.size(); i++)
                 {
                     if(ImGui::TreeNodeEx(("Sphere " + std::to_string(i + 1)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
@@ -168,27 +200,6 @@ void Tracer::Run()
 
                         ImGui::TreePop();
                     }
-                }
-
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                
-                ImGui::Text("Light Direction");
-                ImGui::DragFloat3("##lightDirection", &m_LightDir[0], 0.01f, -1.0f, 1.0f);
-
-                if(ImGui::Button("Add a sphere"))
-                {
-                    m_Scene.spheres.push_back(Sphere());
-
-                    glDeleteBuffers(1, &ssbo);
-
-                    glGenBuffers(1, &ssbo);
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-                    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Sphere) * m_Scene.spheres.size(), m_Scene.spheres.data(), GL_DYNAMIC_DRAW);
-                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
-
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
                 }
 
                 ImGui::TreePop();
@@ -312,6 +323,9 @@ void Tracer::Render(int width, int height)
     srand(time(0));
 
     m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
+    m_Shader.PutInt("u_MaxBounces", m_MaxBounces);
+    m_Shader.PutFloat("u_FltMax", FLT_MAX);
+
     m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
     m_Shader.PutVec3("u_LightDir", m_LightDir);
 

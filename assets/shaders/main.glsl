@@ -51,17 +51,45 @@ uniform vec3 u_camFront;
 uniform vec3 u_LightDir;
 
 uniform int u_SphereCount;
+uniform int u_MaxBounces;
 uniform uint u_RndmSeed;
+uniform float u_FltMax;
 
 layout(std430, binding = 0) buffer SphereData {
     Sphere spheres[];
 };
 
-uint rndm_pcg_hash(inout uint seed)
+uint pcg_hash(uint seed)
 {
     uint state = seed * 747796405u + 2891336453u;
     uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     return (word >> 22u) ^ word;
+}
+
+uint RandomUint(inout uint seed)
+{
+    seed = pcg_hash(seed);
+    return pcg_hash(seed);
+}
+
+float RandomFloat(inout uint seed)
+{
+    return float(RandomUint(seed))/float(u_FltMax);
+}
+
+vec3 RandomVec3(inout uint seed)
+{
+    return vec3(RandomFloat(seed), RandomFloat(seed), RandomFloat(seed));
+}
+
+vec3 RandomVec3MinMax(inout uint seed, float min, float max)
+{
+    return vec3(RandomFloat(seed) * (max - min) + min, RandomFloat(seed) * (max - min) + min, RandomFloat(seed) * (max - min) + min);
+}
+
+vec3 RandomInUnitSphere(inout uint seed)
+{
+    return normalize(RandomVec3MinMax(seed, -1.0f, 1.0f));
 }
 
 vec2 GetSkyboxTexCoord(vec3 rayDir) {
@@ -138,21 +166,30 @@ HitPayload TraceRay(inout Scene scene, Ray ray) {
         return OnHit(scene, ray, closestHitDist);
 }
 
-vec3 GetColor(Scene scene, Ray camRay) {
-    HitPayload payload = TraceRay(scene, camRay);
+vec3 GetColor(Scene scene, Ray ray) {
+    vec3 color = vec3(0.0f);
+    float contrib = 1.0f;
 
-    vec3 color = vec3(0.0);
+    for (int i = 0; i < u_MaxBounces; i++) {
+        HitPayload payload = TraceRay(scene, ray);
 
-    if(payload.hitDist == INVALID)
-    {
-        color = texture(t_Skybox, GetSkyboxTexCoord(camRay.dir)).rgb * u_SkyboxExposure;
-        return color;
+        if(payload.hitDist == INVALID)
+        {
+            color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure;
+            color *= contrib;
+            break;
+        }
+
+        Sphere sphere = spheres[scene.sphereIdx];
+
+        float lightIntensity = max(dot(payload.worldNormal, -scene.lightDir), 0.0f);
+        color += sphere.albedo * lightIntensity;
+        color *= contrib;
+        contrib *= 0.5f;
+
+        ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
+        ray.dir = reflect(ray.dir, payload.worldNormal);
     }
-
-    Sphere sphere = spheres[scene.sphereIdx];
-
- 	float lightIntensity = max(dot(payload.worldNormal, -scene.lightDir), 0.0f);
-    color = sphere.albedo * lightIntensity;
 
     return color;
 }
