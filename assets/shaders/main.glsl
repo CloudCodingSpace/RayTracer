@@ -14,6 +14,7 @@ void main()
 const float PI = 3.141592653589793;
 const float EPS = 1e-4;
 const float INVALID = -1.0;
+const float FLT_MAX = 4294967295.0;
 
 out vec4 FragColor;
 
@@ -53,7 +54,6 @@ uniform vec3 u_LightDir;
 uniform int u_SphereCount;
 uniform int u_MaxBounces;
 uniform uint u_RndmSeed;
-uniform float u_FltMax;
 
 layout(std430, binding = 0) buffer SphereData {
     Sphere spheres[];
@@ -74,7 +74,7 @@ uint RandomUint(inout uint seed)
 
 float RandomFloat(inout uint seed)
 {
-    return float(RandomUint(seed))/float(u_FltMax);
+    return float(RandomUint(seed))/float(FLT_MAX);
 }
 
 vec3 RandomVec3(inout uint seed)
@@ -183,21 +183,21 @@ vec3 GetColor(Scene scene, Ray ray) {
         Sphere sphere = spheres[scene.sphereIdx];
 
         float lightIntensity = max(dot(payload.worldNormal, -scene.lightDir), 0.0f);
-        color += sphere.albedo * lightIntensity;
-        color *= contrib;
+        sphere.albedo *= lightIntensity;
+        color += contrib * sphere.albedo;
         contrib *= 0.5f;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
-        ray.dir = reflect(ray.dir, payload.worldNormal);
+        ray.dir = reflect(ray.dir, payload.worldNormal + sphere.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
     }
 
     return color;
 }
 
-Scene PrepScene() {
+Scene PrepScene(uint seed) {
     Scene scene;
     scene.lightDir = u_LightDir;
-    scene.rndmSeed = u_RndmSeed;
+    scene.rndmSeed = seed;
 
     return scene;
 }
@@ -208,6 +208,10 @@ void main() {
     uv = uv * 2.0 - 1.0;
     uv.x *= aspectRatio;
 
+    uint seed = uint(gl_FragCoord.x * u_resolution.x + gl_FragCoord.y) * u_RndmSeed;
+    seed *= pcg_hash(seed);
+    seed -= u_MaxBounces;
+
     Ray camRay;
     camRay.origin = u_camPos;
 
@@ -216,5 +220,5 @@ void main() {
     vec3 rayDir = normalize(u_camFront + camRight * uv.x + camUp * uv.y);
     camRay.dir = rayDir;
 
-    FragColor = vec4(GetColor(PrepScene(), camRay), 1.0);
+    FragColor = vec4(GetColor(PrepScene(seed), camRay), 1.0);
 }

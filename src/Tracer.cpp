@@ -324,7 +324,6 @@ void Tracer::Render(int width, int height)
 
     m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
     m_Shader.PutInt("u_MaxBounces", m_MaxBounces);
-    m_Shader.PutFloat("u_FltMax", FLT_MAX);
 
     m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
     m_Shader.PutVec3("u_LightDir", m_LightDir);
