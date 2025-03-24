@@ -37,3 +37,5 @@ This project uses a couple of dependencies. Namely :-
  - Can render multiple spheres
  - Can add spheres during runtime
  - Can change the sphere properties during runtime through ImGui
+ - Can do some reflection and the number of bounces per ray can be controlled through the ImGui Settings panel
+ - The ImGui window can be dragged out of the parent window by the ImGui viewports feature
