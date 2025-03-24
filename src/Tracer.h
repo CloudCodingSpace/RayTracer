@@ -25,7 +25,8 @@ private:
     Camera m_Camera;
 
     float m_Exposure = 1.0f;
-    glm::vec3 m_LightDir = glm::vec3(-1.0f);
+    glm::vec3 m_LightPos = glm::vec3(10.0f);
+    glm::vec3 m_LightColor = glm::vec3(1.0f);
     Scene m_Scene;
 
     bool m_Render = false, m_IsSceneHovered = false;

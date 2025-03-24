@@ -138,8 +138,15 @@ void Tracer::Run()
             
             if(ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
-                ImGui::Text("Light Direction");
-                ImGui::DragFloat3("##lightDirection", &m_LightDir[0], 0.01f, -1.0f, 1.0f);
+                ImGui::Text("Light Pos");
+                ImGui::DragFloat3("##lightPos", &m_LightPos[0], 0.01f, -1.0f, 1.0f);
+                
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                
+                ImGui::Text("Light Color");
+                ImGui::ColorEdit3("##lightColor", &m_LightColor[0]);
                 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
@@ -326,7 +333,8 @@ void Tracer::Render(int width, int height)
     m_Shader.PutInt("u_MaxBounces", m_MaxBounces);
 
     m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
-    m_Shader.PutVec3("u_LightDir", m_LightDir);
+    m_Shader.PutVec3("u_LightPos", m_LightPos);
+    m_Shader.PutVec3("u_LightColor", m_LightColor);
 
     m_SkyboxTex.Active(1);
     m_SkyboxTex.Bind();

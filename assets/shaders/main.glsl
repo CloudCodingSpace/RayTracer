@@ -38,7 +38,8 @@ struct Sphere {
 
 struct Scene {
     int sphereIdx;
-    vec3 lightDir;
+    vec3 lightPos;
+    vec3 lightColor;
     uint rndmSeed;
 };
 
@@ -49,7 +50,8 @@ uniform vec2 u_resolution;
 uniform vec3 u_camPos;
 uniform vec3 u_camFront;
 
-uniform vec3 u_LightDir;
+uniform vec3 u_LightPos;
+uniform vec3 u_LightColor;
 
 uniform int u_SphereCount;
 uniform int u_MaxBounces;
@@ -182,9 +184,8 @@ vec3 GetColor(Scene scene, Ray ray) {
 
         Sphere sphere = spheres[scene.sphereIdx];
 
-        float lightIntensity = max(dot(payload.worldNormal, -scene.lightDir), 0.0f);
-        sphere.albedo *= lightIntensity;
-        color += contrib * sphere.albedo;
+        float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
+        color += contrib * sphere.albedo * lightIntensity * scene.lightColor;
         contrib *= 0.5f;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
@@ -196,7 +197,8 @@ vec3 GetColor(Scene scene, Ray ray) {
 
 Scene PrepScene(uint seed) {
     Scene scene;
-    scene.lightDir = u_LightDir;
+    scene.lightPos = u_LightPos;
+    scene.lightColor = u_LightColor;
     scene.rndmSeed = seed;
 
     return scene;
