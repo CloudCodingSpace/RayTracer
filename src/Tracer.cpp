@@ -40,6 +40,12 @@ void Tracer::Run()
 
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
                 break;
+            
+            
+            if(m_Accumulate)
+                m_FrameIdx++;
+            else
+                m_FrameIdx = 1;
         }
         
         // ImGui
@@ -53,6 +59,7 @@ void Tracer::Run()
             if(m_Render)
             {
                 m_Fb.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+                m_PrevFrame.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 m_Fb.Bind();
                 glViewport(0, 0, ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 
@@ -76,6 +83,7 @@ void Tracer::Run()
             ImGui::Text("%.0f FPS", 1.0f/deltaTime);
             
             ImGui::Checkbox("Render", &m_Render);
+            ImGui::Checkbox("Accumulate", &m_Accumulate);
             
             ImGui::Spacing();
             ImGui::Spacing();
@@ -219,6 +227,18 @@ void Tracer::Run()
             GuiHelper::Update(m_Window);
         }
 
+        {
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, m_Fb.GetHandle());
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_PrevFrame.GetHandle());
+            
+            glBlitFramebuffer(0, 0, m_Fb.GetTexture().GetWidth(), m_Fb.GetTexture().GetHeight(), 
+                        0, 0, m_PrevFrame.GetTexture().GetWidth(), m_PrevFrame.GetTexture().GetHeight(), 
+                        GL_COLOR_BUFFER_BIT, GL_NEAREST);
+         
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        }
+
         m_Window.ToggleFullscreenMode(800, 600);
         m_Window.Update();
     }
@@ -274,6 +294,7 @@ void Tracer::Init()
     GuiHelper::Init(m_Window);
 
     m_Fb.Init(m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
+    m_PrevFrame.Init(m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
     
     // Skybox texture
     {
@@ -326,18 +347,24 @@ void Tracer::Render(int width, int height)
     m_Shader.PutVec3("u_camFront", m_Camera.GetFront());
     m_Shader.PutFloat("u_SkyboxExposure", m_Exposure);
     m_Shader.PutTex("t_Skybox", 0);
+    m_Shader.PutTex("t_PrevFrame", 1);
     
     srand(time(0));
 
     m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
     m_Shader.PutInt("u_MaxBounces", m_MaxBounces);
+    m_Shader.PutInt("u_FrameIdx", m_FrameIdx);
+    m_Shader.PutInt("u_Accumulate", (int)m_Accumulate);
+    m_Shader.PutInt("u_CamActive", (int)m_Camera.IsActive());
 
     m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
     m_Shader.PutVec3("u_LightPos", m_LightPos);
     m_Shader.PutVec3("u_LightColor", m_LightColor);
 
     m_SkyboxTex.Active(1);
+    m_SkyboxTex.Active(2);
     m_SkyboxTex.Bind();
+    m_PrevFrame.GetTexture().Bind();
 
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);

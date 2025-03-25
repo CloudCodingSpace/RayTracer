@@ -56,6 +56,11 @@ uniform vec3 u_LightColor;
 uniform int u_SphereCount;
 uniform int u_MaxBounces;
 uniform uint u_RndmSeed;
+uniform int u_FrameIdx;
+uniform int u_Accumulate;
+uniform int u_CamActive;
+
+uniform sampler2D t_PrevFrame;
 
 layout(std430, binding = 0) buffer SphereData {
     Sphere spheres[];
@@ -184,12 +189,13 @@ vec3 GetColor(Scene scene, Ray ray) {
 
         Sphere sphere = spheres[scene.sphereIdx];
 
-        float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
-        color += contrib * sphere.albedo * lightIntensity * scene.lightColor;
+        // float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
+        // color += contrib * sphere.albedo * lightIntensity * scene.lightColor;
         contrib *= 0.5f;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
-        ray.dir = reflect(ray.dir, payload.worldNormal + sphere.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
+        // ray.dir = reflect(ray.dir, payload.worldNormal + sphere.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
+        ray.dir = normalize(payload.worldNormal + RandomInUnitSphere(scene.rndmSeed));
     }
 
     return color;
@@ -223,4 +229,11 @@ void main() {
     camRay.dir = rayDir;
 
     FragColor = vec4(GetColor(PrepScene(seed), camRay), 1.0);
+
+    if((u_Accumulate == 1) && (u_CamActive == 0)) {
+        vec4 prevColor = texture(t_PrevFrame, uv);
+        if (u_FrameIdx > 1) {
+            FragColor = mix(prevColor, FragColor, 1.0 / float(u_FrameIdx));
+        }
+    }
 }

@@ -20,7 +20,7 @@ private:
 private:
     Window m_Window;
     Shader m_Shader;
-    Framebuffer m_Fb;
+    Framebuffer m_Fb, m_PrevFrame;
     Texture m_SkyboxTex;
     Camera m_Camera;
 
@@ -29,10 +29,10 @@ private:
     glm::vec3 m_LightColor = glm::vec3(1.0f);
     Scene m_Scene;
 
-    bool m_Render = false, m_IsSceneHovered = false;
+    bool m_Render = false, m_IsSceneHovered = false, m_Accumulate = false;
     float lastTime, deltaTime, currentTime;
     uint32_t vao, vbo, ssbo;
-    int m_MaxBounces = 2;
+    int m_MaxBounces = 2, m_FrameIdx = 1;
 
 private:
     void WriteToPngFile(std::string fileName, unsigned char* pixels, int width, int height);
