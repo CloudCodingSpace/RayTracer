@@ -45,7 +45,10 @@ void Tracer::Run()
             if(m_Accumulate && !m_Camera.IsActive())
                 m_FrameIdx++;
             else
+            {
                 m_FrameIdx = 1;
+                m_PrevFrame.GetTexture().SetPixels(nullptr);
+            }
         }
         
         // ImGui
@@ -59,7 +62,11 @@ void Tracer::Run()
             if(m_Render)
             {
                 m_Fb.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
-                m_PrevFrame.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+                if(m_PrevFrame.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y))
+                {
+                    m_FrameIdx = 1;
+                    m_PrevFrame.GetTexture().SetPixels(nullptr);
+                }
 
                 m_PrevFrame.Bind();
                 glViewport(0, 0, ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
@@ -116,10 +123,12 @@ void Tracer::Run()
 
             ImGui::Separator();
 
+            bool resetFrameIdx = false;
             if(ImGui::TreeNodeEx("Skybox", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
                 ImGui::Text("Skybox Exposure");
-                ImGui::DragFloat("##skyboxExposure", &m_Exposure, 0.1f, 1.0f, 10.0f);
+                if(ImGui::DragFloat("##skyboxExposure", &m_Exposure, 0.1f, 1.0f, 10.0f))
+                    resetFrameIdx = true;
 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
@@ -129,6 +138,8 @@ void Tracer::Run()
                 ImGui::Image((ImTextureID)(intptr_t)m_SkyboxTex.GetHandle(), ImVec2(96, 54), ImVec2(0, 1), ImVec2(1, 0));
                 if(ImGui::IsItemClicked())
                 {
+                    resetFrameIdx = true;
+
                     nfdchar_t* outPath = nullptr;
                     nfdresult_t result = NFD_OpenDialog("hdr", nullptr, &outPath); 
                     
@@ -152,28 +163,33 @@ void Tracer::Run()
             if(ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
                 ImGui::Text("Light Pos");
-                ImGui::DragFloat3("##lightPos", &m_LightPos[0], 0.01f, -1.0f, 1.0f);
+                if(ImGui::DragFloat3("##lightPos", &m_LightPos[0], 0.01f, -1.0f, 1.0f))
+                    resetFrameIdx = true;
                 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
                 
                 ImGui::Text("Light Color");
-                ImGui::ColorEdit3("##lightColor", &m_LightColor[0]);
+                if(ImGui::ColorEdit3("##lightColor", &m_LightColor[0]))
+                    resetFrameIdx = true;
                 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
                 
                 ImGui::Text("Max Bounces Per Ray");
-                ImGui::DragInt("##maxBounces", &m_MaxBounces, 1.0f, 1, 100);
-                
+                if(ImGui::DragInt("##maxBounces", &m_MaxBounces, 1.0f, 1, 100))
+                    resetFrameIdx = true;
+
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
 
                 if(ImGui::Button("Add a sphere"))
                 {
+                    resetFrameIdx = true;
+
                     m_Scene.spheres.push_back(Sphere());
     
                     glDeleteBuffers(1, &ssbo);
@@ -195,28 +211,32 @@ void Tracer::Run()
                     if(ImGui::TreeNodeEx(("Sphere " + std::to_string(i + 1)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
                     {
                         ImGui::Text("Sphere Center");
-                        ImGui::DragFloat3(("##sphereCenter" + std::to_string(i)).c_str(), &m_Scene.spheres[i].center[0], 0.1f, -100.0f, 100.0f);
+                        if(ImGui::DragFloat3(("##sphereCenter" + std::to_string(i)).c_str(), &m_Scene.spheres[i].center[0], 0.1f, -100.0f, 100.0f))
+                            resetFrameIdx = true;
                         
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
 
                         ImGui::Text("Sphere Albedo");
-                        ImGui::ColorEdit3(("##sphereAlbedo" + std::to_string(i)).c_str(), &m_Scene.spheres[i].albedo[0]);
+                        if(ImGui::ColorEdit3(("##sphereAlbedo" + std::to_string(i)).c_str(), &m_Scene.spheres[i].albedo[0]))
+                            resetFrameIdx = true;
                         
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         
                         ImGui::Text("Sphere Radius");
-                        ImGui::DragFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.1f, 0.2f, 100.0f);
+                        if(ImGui::DragFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.1f, 0.2f, 100.0f))
+                            resetFrameIdx = true;
                         
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         
                         ImGui::Text("Sphere Roughness");
-                        ImGui::DragFloat(("##sphereRoughness" + std::to_string(i)).c_str(), &m_Scene.spheres[i].roughness, 0.1f, 0.0f, 1.0f);
+                        if(ImGui::DragFloat(("##sphereRoughness" + std::to_string(i)).c_str(), &m_Scene.spheres[i].roughness, 0.1f, 0.0f, 1.0f))
+                            resetFrameIdx = true;
 
                         ImGui::TreePop();
                     }
@@ -226,6 +246,12 @@ void Tracer::Run()
             }
 
             ImGui::End();
+
+            if(resetFrameIdx)
+            {
+                m_FrameIdx = 1;
+                m_PrevFrame.GetTexture().SetPixels(nullptr);
+            }
 
             glViewport(0, 0, m_Window.GetWindowInfo().width, m_Window.GetWindowInfo().height);
             GuiHelper::EndFrame();

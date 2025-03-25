@@ -189,13 +189,13 @@ vec3 GetColor(Scene scene, Ray ray) {
 
         Sphere sphere = spheres[scene.sphereIdx];
 
-        // float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
-        // color += contrib * sphere.albedo * lightIntensity * scene.lightColor;
+        float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
+        color += contrib * sphere.albedo * lightIntensity * scene.lightColor;
         contrib *= 0.5f;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
-        // ray.dir = reflect(ray.dir, payload.worldNormal + sphere.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
-        ray.dir = normalize(payload.worldNormal + RandomInUnitSphere(scene.rndmSeed));
+        ray.dir = reflect(ray.dir, payload.worldNormal + sphere.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
+        // ray.dir = payload.worldNormal + RandomInUnitSphere(scene.rndmSeed);
     }
 
     return color;
@@ -216,9 +216,8 @@ void main() {
     uv = uv * 2.0 - 1.0;
     uv.x *= aspectRatio;
 
-    uint seed = uint(gl_FragCoord.x * u_resolution.x + gl_FragCoord.y) * u_RndmSeed;
-    seed *= pcg_hash(seed);
-    seed -= u_MaxBounces;
+    uint seed = uint(gl_FragCoord.x + gl_FragCoord.y * u_resolution.x) * u_FrameIdx;
+    seed ^= pcg_hash(seed + u_RndmSeed);
 
     Ray camRay;
     camRay.origin = u_camPos;
@@ -231,9 +230,7 @@ void main() {
     FragColor = vec4(GetColor(PrepScene(seed), camRay), 1.0);
 
     if((u_Accumulate == 1) && (u_CamActive == 0)) {
-        vec4 prevColor = texture(t_PrevFrame, uv);
-        if (u_FrameIdx > 1) {
-            FragColor = mix(prevColor, FragColor, 1.0 / float(u_FrameIdx));
-        }
+        uv = gl_FragCoord.xy / u_resolution; 
+        FragColor = (texture(t_PrevFrame, uv) * (u_FrameIdx - 1.0) + FragColor) / u_FrameIdx;
     }
 }

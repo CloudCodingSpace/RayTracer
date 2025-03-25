@@ -8,7 +8,7 @@ public:
     void Init(int32_t width, int32_t height);
     void Destroy();
 
-    void Resize(int32_t width, int32_t height);
+    bool Resize(int32_t width, int32_t height);
 
     void Bind();
     void Unbind();

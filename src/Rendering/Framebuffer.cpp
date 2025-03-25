@@ -28,17 +28,19 @@ void Framebuffer::Destroy()
     glDeleteFramebuffers(1, &m_Handle);   
 }
 
-void Framebuffer::Resize(int32_t width, int32_t height)
+bool Framebuffer::Resize(int32_t width, int32_t height)
 {
     if(m_Texture.GetWidth() == width && m_Texture.GetHeight() == height)
-        return;
+        return false;
 
     if(width == 0 || height == 0)
-        return;
+        return false;
 
     Destroy();
 
     Init(width, height);
+
+    return true;
 }
 
 void Framebuffer::Bind()
