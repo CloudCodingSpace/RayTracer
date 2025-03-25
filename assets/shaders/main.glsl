@@ -14,7 +14,7 @@ void main()
 const float PI = 3.141592653589793;
 const float EPS = 1e-4;
 const float INVALID = -1.0;
-const float FLT_MAX = 4294967295.0;
+const uint UINT_MAX = 4294967295U;
 
 out vec4 FragColor;
 
@@ -76,7 +76,7 @@ uint RandomUint(inout uint seed)
 
 float RandomFloat(inout uint seed)
 {
-    return float(RandomUint(seed))/float(FLT_MAX);
+    return float(RandomUint(seed))/float(UINT_MAX);
 }
 
 vec3 RandomVec3(inout uint seed)
