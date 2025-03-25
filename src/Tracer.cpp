@@ -42,7 +42,7 @@ void Tracer::Run()
                 break;
             
             
-            if(m_Accumulate)
+            if(m_Accumulate && !m_Camera.IsActive())
                 m_FrameIdx++;
             else
                 m_FrameIdx = 1;
@@ -60,6 +60,11 @@ void Tracer::Run()
             {
                 m_Fb.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 m_PrevFrame.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+
+                m_PrevFrame.Bind();
+                glViewport(0, 0, ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+                m_PrevFrame.Unbind();
+
                 m_Fb.Bind();
                 glViewport(0, 0, ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 
@@ -362,8 +367,9 @@ void Tracer::Render(int width, int height)
     m_Shader.PutVec3("u_LightColor", m_LightColor);
 
     m_SkyboxTex.Active(1);
-    m_SkyboxTex.Active(2);
     m_SkyboxTex.Bind();
+
+    m_SkyboxTex.Active(2);
     m_PrevFrame.GetTexture().Bind();
 
     glBindVertexArray(vao);
