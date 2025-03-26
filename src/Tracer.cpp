@@ -379,8 +379,6 @@ void Tracer::Render(int width, int height)
     m_Shader.PutFloat("u_SkyboxExposure", m_Exposure);
     m_Shader.PutTex("t_Skybox", 0);
     m_Shader.PutTex("t_PrevFrame", 1);
-    
-    srand(time(0));
 
     m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
     m_Shader.PutInt("u_MaxBounces", m_MaxBounces);
