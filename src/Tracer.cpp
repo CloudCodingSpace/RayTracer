@@ -14,8 +14,8 @@
 
 #include <nfd.h>
 
+#include <string>
 #include <thread>
-#include <ctime>
 #include <cstdlib>
 
 void Tracer::Run()
@@ -163,7 +163,7 @@ void Tracer::Run()
             if(ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
                 ImGui::Text("Light Pos");
-                if(ImGui::DragFloat3("##lightPos", &m_LightPos[0], 0.01f, -1.0f, 1.0f))
+                if(ImGui::DragFloat3("##lightPos", &m_LightPos[0], 0.01f, -100.0f, 100.0f))
                     resetFrameIdx = true;
                 
                 ImGui::Spacing(); 
@@ -186,26 +186,63 @@ void Tracer::Run()
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
 
-                if(ImGui::Button("Add a sphere"))
+                if(ImGui::Button("Add sphere"))
                 {
-                    resetFrameIdx = true;
-
                     m_Scene.spheres.push_back(Sphere());
     
-                    glDeleteBuffers(1, &ssbo);
+                    glDeleteBuffers(1, &m_SceneSSBO);
     
-                    glGenBuffers(1, &ssbo);
-                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+                    glGenBuffers(1, &m_SceneSSBO);
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_SceneSSBO);
                     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Sphere) * m_Scene.spheres.size(), m_Scene.spheres.data(), GL_DYNAMIC_DRAW);
-                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_SceneSSBO);
     
                     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
                 }
 
                 ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
+
+                if(ImGui::Button("Add material"))
+                {
+                    m_Scene.materials.push_back(Material{});                    
                 
+                    glDeleteBuffers(1, &m_MatSSBO);
+    
+                    glGenBuffers(1, &m_MatSSBO);
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_MatSSBO);
+                    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Material) * m_Scene.materials.size(), m_Scene.materials.data(), GL_DYNAMIC_DRAW);
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_MatSSBO);
+    
+                    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+                }
+                
+                ImGui::Separator();
+               
+                if(ImGui::TreeNodeEx("Materials", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
+                {
+                    for(int i = 0; i < m_Scene.materials.size(); i++)
+                    {
+                        if(ImGui::TreeNodeEx(("Material #" + std::to_string(i)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
+                        {
+                            ImGui::Text("Albedo");
+                            if(ImGui::ColorEdit3(("##albedo" + std::to_string(i)).c_str(), &m_Scene.materials[i].albedo[0]))
+                                resetFrameIdx = true;
+
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+
+                            ImGui::Text("Roughness");
+                            if(ImGui::DragFloat(("##rougness" + std::to_string(i)).c_str(), &m_Scene.materials[i].roughness, 0.1f, 0.0f, 1.0f))
+                                resetFrameIdx = true;
+
+                            ImGui::TreePop();
+                        }
+                    }
+
+                    ImGui::TreePop();
+                }
+
                 for(int i = 0; i < m_Scene.spheres.size(); i++)
                 {
                     if(ImGui::TreeNodeEx(("Sphere " + std::to_string(i + 1)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
@@ -217,26 +254,23 @@ void Tracer::Run()
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
                         ImGui::Spacing(); 
-
-                        ImGui::Text("Sphere Albedo");
-                        if(ImGui::ColorEdit3(("##sphereAlbedo" + std::to_string(i)).c_str(), &m_Scene.spheres[i].albedo[0]))
-                            resetFrameIdx = true;
-                        
-                        ImGui::Spacing(); 
-                        ImGui::Spacing(); 
-                        ImGui::Spacing(); 
                         
                         ImGui::Text("Sphere Radius");
-                        if(ImGui::DragFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.1f, 0.2f, 100.0f))
+                        if(ImGui::DragFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.1f, 0.2f, 1000.0f))
                             resetFrameIdx = true;
-                        
-                        ImGui::Spacing(); 
-                        ImGui::Spacing(); 
-                        ImGui::Spacing(); 
-                        
-                        ImGui::Text("Sphere Roughness");
-                        if(ImGui::DragFloat(("##sphereRoughness" + std::to_string(i)).c_str(), &m_Scene.spheres[i].roughness, 0.1f, 0.0f, 1.0f))
+
+                        ImGui::Spacing();
+                        ImGui::Spacing();
+                        ImGui::Spacing();
+
+                        ImGui::Text("Material Index");
+                        if(ImGui::DragInt(("##matIdx" + std::to_string(i)).c_str(), &m_Scene.spheres[i].materialIdx, 1.0f))
                             resetFrameIdx = true;
+
+                        if(m_Scene.spheres[i].materialIdx >= m_Scene.materials.size())
+                        {
+                            m_Scene.spheres[i].materialIdx = 0;
+                        }
 
                         ImGui::TreePop();
                     }
@@ -339,13 +373,21 @@ void Tracer::Init()
     // Scene
     {
         m_Scene.spheres.push_back(Sphere{});
+        m_Scene.materials.push_back(Material{});
     }
-    // SSBO
+    // SSBOs
     {
-        glGenBuffers(1, &ssbo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+        glGenBuffers(1, &m_SceneSSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_SceneSSBO);
         glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Sphere) * m_Scene.spheres.size(), m_Scene.spheres.data(), GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_SceneSSBO);
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    
+        glGenBuffers(1, &m_MatSSBO);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_MatSSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Material) * m_Scene.materials.size(), m_Scene.materials.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_MatSSBO);
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
@@ -360,6 +402,9 @@ void Tracer::Cleanup()
 
     m_Shader.Destroy();
 
+    glDeleteBuffers(1, &m_MatSSBO);
+    glDeleteBuffers(1, &m_SceneSSBO);
+
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     m_Window.Destroy();
@@ -367,9 +412,13 @@ void Tracer::Cleanup()
 
 void Tracer::Render(int width, int height)
 {
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_SceneSSBO);
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(Sphere) * m_Scene.spheres.size(), m_Scene.spheres.data());
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_SceneSSBO);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_MatSSBO);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(Material) * m_Scene.materials.size(), m_Scene.materials.data());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_MatSSBO);
 
     m_Shader.Bind();
 
@@ -380,7 +429,6 @@ void Tracer::Render(int width, int height)
     m_Shader.PutTex("t_Skybox", 0);
     m_Shader.PutTex("t_PrevFrame", 1);
 
-    m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
     m_Shader.PutInt("u_MaxBounces", m_MaxBounces);
     m_Shader.PutInt("u_FrameIdx", m_FrameIdx);
     m_Shader.PutInt("u_Accumulate", (int)m_Accumulate);

@@ -31,7 +31,7 @@ private:
 
     bool m_Render = false, m_IsSceneHovered = false, m_Accumulate = false;
     float lastTime, deltaTime, currentTime;
-    uint32_t vao, vbo, ssbo;
+    uint32_t vao, vbo, m_SceneSSBO, m_MatSSBO;
     int m_MaxBounces = 2, m_FrameIdx = 1;
 
 private:

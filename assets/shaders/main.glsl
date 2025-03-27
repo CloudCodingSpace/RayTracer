@@ -29,11 +29,16 @@ struct HitPayload {
     vec3 worldNormal;
 };
 
-struct Sphere {
-    vec3 albedo;
-    float radius;
-    vec3 center;
+struct Material
+{
+    vec3 albedo; 
     float roughness;
+};
+
+struct Sphere {
+    vec3 center;
+    int matIdx;
+    float radius;
 };
 
 struct Scene {
@@ -53,7 +58,6 @@ uniform vec3 u_camFront;
 uniform vec3 u_LightPos;
 uniform vec3 u_LightColor;
 
-uniform int u_SphereCount;
 uniform int u_MaxBounces;
 uniform uint u_RndmSeed;
 uniform int u_FrameIdx;
@@ -64,6 +68,10 @@ uniform sampler2D t_PrevFrame;
 
 layout(std430, binding = 0) buffer SphereData {
     Sphere spheres[];
+};
+
+layout(std430, binding = 1) buffer MaterialData {
+    Material materials[];
 };
 
 uint pcg_hash(uint seed)
@@ -153,7 +161,7 @@ HitPayload TraceRay(inout Scene scene, Ray ray) {
     float closestHitDist = 1e10;
     int sphereIdx;
 
-    for(int i = 0; i < u_SphereCount; i++) {
+    for(int i = 0; i < spheres.length(); i++) {
         float hitDist = HitSphere(spheres[i], ray);
 
         if(hitDist == INVALID)
@@ -188,13 +196,14 @@ vec3 GetColor(Scene scene, Ray ray) {
         }
 
         Sphere sphere = spheres[scene.sphereIdx];
+        Material mat = materials[sphere.matIdx];
 
         float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
-        color += contrib * sphere.albedo * lightIntensity * scene.lightColor;
+        color += contrib * mat.albedo * lightIntensity * scene.lightColor;
         contrib *= 0.5f;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
-        ray.dir = reflect(ray.dir, payload.worldNormal + sphere.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
+        ray.dir = reflect(ray.dir, payload.worldNormal + mat.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
         // ray.dir = payload.worldNormal + RandomInUnitSphere(scene.rndmSeed);
     }
 
