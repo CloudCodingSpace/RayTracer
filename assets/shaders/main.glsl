@@ -54,6 +54,7 @@ uniform sampler2D t_Skybox;
 uniform vec2 u_resolution;
 uniform vec3 u_camPos;
 uniform vec3 u_camFront;
+uniform vec3 u_SkyboxColor;
 
 uniform vec3 u_LightPos;
 uniform vec3 u_LightColor;
@@ -63,6 +64,7 @@ uniform uint u_RndmSeed;
 uniform int u_FrameIdx;
 uniform int u_Accumulate;
 uniform int u_CamActive;
+uniform int u_UseSkybox;
 
 uniform sampler2D t_PrevFrame;
 
@@ -190,7 +192,13 @@ vec3 GetColor(Scene scene, Ray ray) {
 
         if(payload.hitDist == INVALID)
         {
-            color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure;
+            if(u_UseSkybox == 1) {
+                color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure;
+            }
+            else {
+                color += u_SkyboxColor;
+            }
+
             color *= contrib;
             break;
         }
