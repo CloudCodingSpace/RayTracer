@@ -5,6 +5,8 @@
 #include <glm/glm.hpp>
 
 #include <cstdalign>
+#include <string>
+#include <fstream>
 
 struct alignas(16) Material 
 {
@@ -23,4 +25,9 @@ struct Scene
 {
     std::vector<Sphere> spheres;
     std::vector<Material> materials;
+
+    static void Serialize(Scene& scene, std::string path);
+    static void Deserialize(Scene& scene, std::string path);
+    static std::ifstream s_In;
+    static std::ofstream s_Out;
 };

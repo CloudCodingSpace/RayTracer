@@ -17,6 +17,7 @@
 #include <string>
 #include <thread>
 #include <cstdlib>
+#include <filesystem>
 
 void Tracer::Run()
 {
@@ -377,8 +378,9 @@ void Tracer::Init()
 
     // Scene
     {
-        m_Scene.spheres.push_back(Sphere{});
         m_Scene.materials.push_back(Material{});
+        m_Scene.spheres.push_back(Sphere{});
+        Scene::Deserialize(m_Scene, "scene.save");
     }
     // SSBOs
     {
@@ -413,6 +415,8 @@ void Tracer::Cleanup()
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     m_Window.Destroy();
+
+    Scene::Serialize(m_Scene, "scene.save");
 }
 
 void Tracer::Render(int width, int height)
