@@ -244,40 +244,43 @@ void Tracer::Run()
 
                     ImGui::TreePop();
                 }
-
-                for(int i = 0; i < m_Scene.spheres.size(); i++)
-                {
-                    if(ImGui::TreeNodeEx(("Sphere " + std::to_string(i + 1)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
+                
+                if(ImGui::TreeNodeEx("Spheres", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth)) {
+                    for(int i = 0; i < m_Scene.spheres.size(); i++)
                     {
-                        ImGui::Text("Sphere Center");
-                        if(ImGui::DragFloat3(("##sphereCenter" + std::to_string(i)).c_str(), &m_Scene.spheres[i].center[0], 0.1f, -100.0f, 100.0f))
-                            resetFrameIdx = true;
-                        
-                        ImGui::Spacing(); 
-                        ImGui::Spacing(); 
-                        ImGui::Spacing(); 
-                        
-                        ImGui::Text("Sphere Radius");
-                        if(ImGui::DragFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.1f, 0.2f, 1000.0f))
-                            resetFrameIdx = true;
-
-                        ImGui::Spacing();
-                        ImGui::Spacing();
-                        ImGui::Spacing();
-
-                        ImGui::Text("Material Index");
-                        if(ImGui::DragInt(("##matIdx" + std::to_string(i)).c_str(), &m_Scene.spheres[i].materialIdx, 1.0f))
-                            resetFrameIdx = true;
-
-                        if(m_Scene.spheres[i].materialIdx >= m_Scene.materials.size())
+                        if(ImGui::TreeNodeEx(("Sphere " + std::to_string(i + 1)).c_str(), ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
                         {
-                            m_Scene.spheres[i].materialIdx = 0;
+                            ImGui::Text("Sphere Center");
+                            if(ImGui::DragFloat3(("##sphereCenter" + std::to_string(i)).c_str(), &m_Scene.spheres[i].center[0], 0.1f, -100.0f, 100.0f))
+                                resetFrameIdx = true;
+                            
+                            ImGui::Spacing(); 
+                            ImGui::Spacing(); 
+                            ImGui::Spacing(); 
+                            
+                            ImGui::Text("Sphere Radius");
+                            if(ImGui::DragFloat(("##sphereRadius" + std::to_string(i)).c_str(), &m_Scene.spheres[i].radius, 0.1f, 0.2f, 1000.0f))
+                                resetFrameIdx = true;
+
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+
+                            ImGui::Text("Material Index");
+                            if(ImGui::DragInt(("##matIdx" + std::to_string(i)).c_str(), &m_Scene.spheres[i].materialIdx, 1.0f))
+                                resetFrameIdx = true;
+
+                            if(m_Scene.spheres[i].materialIdx >= m_Scene.materials.size())
+                            {
+                                m_Scene.spheres[i].materialIdx = 0;
+                            }
+
+                            ImGui::TreePop();
                         }
-
-                        ImGui::TreePop();
                     }
-                }
 
+                    ImGui::TreePop();
+                }
                 ImGui::TreePop();
             }
 
