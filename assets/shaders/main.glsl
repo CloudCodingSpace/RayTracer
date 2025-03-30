@@ -127,7 +127,7 @@ float HitSphere(Sphere sphere, Ray ray) {
 	float c = dot(origin, origin) - sphere.radius * sphere.radius;
 
 	float discriminant = b * b - 4.0f * a * c;
-	if (discriminant < 0.0)
+	if (discriminant < EPS)
 		return INVALID;
 
     float closestT = (-b - sqrt(discriminant)) / (2.0f * a);

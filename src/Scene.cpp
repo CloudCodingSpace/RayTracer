@@ -1,6 +1,7 @@
 #include "Scene.h"
 
 std::ofstream Scene::s_Out;
+std::ifstream Scene::s_In;
 
 void Scene::Serialize(Scene& scene, std::string path)
 {
