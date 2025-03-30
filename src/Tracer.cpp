@@ -129,6 +129,8 @@ void Tracer::Run()
             {
                 ImGui::Checkbox("Use Skybox", &m_UseSkybox);
 
+                ImGui::ColorEdit3("Sky color", &m_SkyColor[0]);
+
                 ImGui::Text("Skybox Exposure");
                 if(ImGui::DragFloat("##skyboxExposure", &m_Exposure, 0.1f, 1.0f, 10.0f))
                     resetFrameIdx = true;
