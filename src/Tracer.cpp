@@ -127,10 +127,6 @@ void Tracer::Run()
             bool resetFrameIdx = false;
             if(ImGui::TreeNodeEx("Skybox", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
-                ImGui::Checkbox("Use Skybox", &m_UseSkybox);
-
-                ImGui::ColorEdit3("Sky color", &m_SkyColor[0]);
-
                 ImGui::Text("Skybox Exposure");
                 if(ImGui::DragFloat("##skyboxExposure", &m_Exposure, 0.1f, 1.0f, 10.0f))
                     resetFrameIdx = true;
@@ -436,7 +432,6 @@ void Tracer::Render(int width, int height)
     m_Shader.PutVec2("u_resolution", glm::vec2(width, height));
     m_Shader.PutVec3("u_camPos", m_Camera.GetPos());
     m_Shader.PutVec3("u_camFront", m_Camera.GetFront());
-    m_Shader.PutVec3("u_SkyColor", m_SkyColor);
     m_Shader.PutFloat("u_SkyboxExposure", m_Exposure);
     m_Shader.PutTex("t_Skybox", 0);
     m_Shader.PutTex("t_PrevFrame", 1);
@@ -445,7 +440,6 @@ void Tracer::Render(int width, int height)
     m_Shader.PutInt("u_FrameIdx", m_FrameIdx);
     m_Shader.PutInt("u_Accumulate", (int)m_Accumulate);
     m_Shader.PutInt("u_CamActive", (int)m_Camera.IsActive());
-    m_Shader.PutInt("u_UseSkybox", (int)m_UseSkybox);
 
     m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
     m_Shader.PutVec3("u_LightPos", m_LightPos);

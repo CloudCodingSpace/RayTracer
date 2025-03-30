@@ -54,7 +54,6 @@ uniform sampler2D t_Skybox;
 uniform vec2 u_resolution;
 uniform vec3 u_camPos;
 uniform vec3 u_camFront;
-uniform vec3 u_SkyboxColor;
 
 uniform vec3 u_LightPos;
 uniform vec3 u_LightColor;
@@ -64,7 +63,6 @@ uniform uint u_RndmSeed;
 uniform int u_FrameIdx;
 uniform int u_Accumulate;
 uniform int u_CamActive;
-uniform int u_UseSkybox;
 
 uniform sampler2D t_PrevFrame;
 
@@ -185,20 +183,14 @@ HitPayload TraceRay(inout Scene scene, Ray ray) {
 
 vec3 GetColor(Scene scene, Ray ray) {
     vec3 color = vec3(0.0f);
-    float contrib = 1.0f;
+    vec3 contrib = vec3(1.0f);
 
     for (int i = 0; i < u_MaxBounces; i++) {
         HitPayload payload = TraceRay(scene, ray);
 
         if(payload.hitDist == INVALID)
         {
-            if(u_UseSkybox == 1) {
-                color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure;
-            }
-            else {
-                color += u_SkyboxColor;
-            }
-
+            color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure;
             color *= contrib;
             break;
         }
@@ -206,13 +198,14 @@ vec3 GetColor(Scene scene, Ray ray) {
         Sphere sphere = spheres[scene.sphereIdx];
         Material mat = materials[sphere.matIdx];
 
-        float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
-        color += contrib * mat.albedo * lightIntensity * scene.lightColor;
+        // float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
+        // color += contrib * mat.albedo * lightIntensity * scene.lightColor;
+        contrib *= mat.albedo * scene.lightColor;
         contrib *= 0.5f;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
-        ray.dir = reflect(ray.dir, payload.worldNormal + mat.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
-        // ray.dir = payload.worldNormal + RandomInUnitSphere(scene.rndmSeed);
+        // ray.dir = reflect(ray.dir, payload.worldNormal + mat.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
+        ray.dir = payload.worldNormal + RandomInUnitSphere(scene.rndmSeed);
     }
 
     return color;

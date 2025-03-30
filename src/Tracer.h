@@ -27,10 +27,9 @@ private:
     float m_Exposure = 1.0f;
     glm::vec3 m_LightPos = glm::vec3(10.0f);
     glm::vec3 m_LightColor = glm::vec3(1.0f);
-    glm::vec3 m_SkyColor = glm::vec3(1.0f);
     Scene m_Scene;
 
-    bool m_Render = false, m_IsSceneHovered = false, m_Accumulate = false, m_UseSkybox = true;
+    bool m_Render = false, m_IsSceneHovered = false, m_Accumulate = false;
     float lastTime, deltaTime, currentTime;
     uint32_t vao, vbo, m_SceneSSBO, m_MatSSBO;
     int m_MaxBounces = 2, m_FrameIdx = 1;
