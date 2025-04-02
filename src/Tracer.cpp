@@ -376,8 +376,6 @@ void Tracer::Init()
 
     // Scene
     {
-        m_Scene.materials.push_back(Material{});
-        m_Scene.spheres.push_back(Sphere{});
         Scene::Deserialize(m_Scene, "scene.save");
     }
     // SSBOs
@@ -440,6 +438,7 @@ void Tracer::Render(int width, int height)
     m_Shader.PutInt("u_FrameIdx", m_FrameIdx);
     m_Shader.PutInt("u_Accumulate", (int)m_Accumulate);
     m_Shader.PutInt("u_CamActive", (int)m_Camera.IsActive());
+    m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
 
     m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
     m_Shader.PutVec3("u_LightPos", m_LightPos);

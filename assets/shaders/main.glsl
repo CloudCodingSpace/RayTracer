@@ -63,6 +63,7 @@ uniform uint u_RndmSeed;
 uniform int u_FrameIdx;
 uniform int u_Accumulate;
 uniform int u_CamActive;
+uniform int u_SphereCount;
 
 uniform sampler2D t_PrevFrame;
 
@@ -161,7 +162,7 @@ HitPayload TraceRay(inout Scene scene, Ray ray) {
     float closestHitDist = 1e10;
     int sphereIdx;
 
-    for(int i = 0; i < spheres.length(); i++) {
+    for(int i = 0; i < u_SphereCount; i++) {
         float hitDist = HitSphere(spheres[i], ray);
 
         if(hitDist == INVALID)
