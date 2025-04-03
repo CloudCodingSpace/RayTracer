@@ -202,7 +202,6 @@ vec3 GetColor(Scene scene, Ray ray) {
         // float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
         // color += contrib * mat.albedo * lightIntensity * scene.lightColor;
         contrib *= mat.albedo * scene.lightColor;
-        contrib *= 0.5f;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
         // ray.dir = reflect(ray.dir, payload.worldNormal + mat.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
@@ -240,7 +239,7 @@ void main() {
 
     FragColor = vec4(GetColor(PrepScene(seed), camRay), 1.0);
 
-    if((u_Accumulate == 1) && (u_CamActive == 0)) {
+    if((u_Accumulate == 1) && (u_CamActive == 0) && (u_FrameIdx <= 10000)) {
         uv = gl_FragCoord.xy / u_resolution; 
         FragColor = (texture(t_PrevFrame, uv) * (u_FrameIdx - 1.0) + FragColor) / u_FrameIdx;
     }

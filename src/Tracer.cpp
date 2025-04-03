@@ -237,6 +237,7 @@ void Tracer::Run()
                             if(ImGui::DragFloat(("##rougness" + std::to_string(i)).c_str(), &m_Scene.materials[i].roughness, 0.1f, 0.0f, 1.0f))
                                 resetFrameIdx = true;
 
+
                             ImGui::TreePop();
                         }
                     }
