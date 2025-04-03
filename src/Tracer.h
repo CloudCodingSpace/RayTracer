@@ -32,7 +32,7 @@ private:
     bool m_Render = false, m_IsSceneHovered = false, m_Accumulate = false;
     float lastTime, deltaTime, currentTime;
     uint32_t vao, vbo, m_SceneSSBO, m_MatSSBO;
-    int m_MaxBounces = 2, m_FrameIdx = 1;
+    int m_Bounces = 10, m_FrameIdx = 1;
 
 private:
     void WriteToPngFile(std::string fileName, unsigned char* pixels, int width, int height);

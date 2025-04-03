@@ -180,7 +180,7 @@ void Tracer::Run()
                 ImGui::Spacing(); 
                 
                 ImGui::Text("Max Bounces Per Ray");
-                if(ImGui::DragInt("##maxBounces", &m_MaxBounces, 1.0f, 1, 100))
+                if(ImGui::DragInt("##maxBounces", &m_Bounces, 1.0f, 1, 100))
                     resetFrameIdx = true;
 
                 ImGui::Spacing(); 
@@ -237,10 +237,27 @@ void Tracer::Run()
                             if(ImGui::DragFloat(("##rougness" + std::to_string(i)).c_str(), &m_Scene.materials[i].roughness, 0.1f, 0.0f, 1.0f))
                                 resetFrameIdx = true;
 
+                            const char* items[] = { "Diffuse", "Metallic", "Glass" };
+                            int selectedIndex = m_Scene.materials[i].matIdx;  
+
+                            if (ImGui::BeginCombo(("Material Type##" + std::to_string(i)).c_str(), items[selectedIndex])) {
+                                for (int j = 0; j < IM_ARRAYSIZE(items); j++) {
+                                    bool isSelected = (selectedIndex == j);
+                                    if (ImGui::Selectable(items[j], isSelected)) {
+                                        m_Scene.materials[i].matIdx = j;  // Update material-specific index
+                                        resetFrameIdx = true;
+                                    }
+                                    if (isSelected) {
+                                        ImGui::SetItemDefaultFocus();
+                                    }
+                                }
+                                ImGui::EndCombo();
+                            }
 
                             ImGui::TreePop();
                         }
                     }
+
 
                     ImGui::TreePop();
                 }
@@ -435,7 +452,7 @@ void Tracer::Render(int width, int height)
     m_Shader.PutTex("t_Skybox", 0);
     m_Shader.PutTex("t_PrevFrame", 1);
 
-    m_Shader.PutInt("u_MaxBounces", m_MaxBounces);
+    m_Shader.PutInt("u_MaxBounces", m_Bounces);
     m_Shader.PutInt("u_FrameIdx", m_FrameIdx);
     m_Shader.PutInt("u_Accumulate", (int)m_Accumulate);
     m_Shader.PutInt("u_CamActive", (int)m_Camera.IsActive());

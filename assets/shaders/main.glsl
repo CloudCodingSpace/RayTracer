@@ -15,6 +15,9 @@ const float PI = 3.141592653589793;
 const float EPS = 1e-4;
 const float INVALID = -1.0;
 const uint UINT_MAX = 4294967295U;
+const int DIFFUSE_MAT_IDX = 0;
+const int METALLIC_MAT_IDX = 1;
+const int GLASS_MAT_IDX = 2;
 
 out vec4 FragColor;
 
@@ -33,6 +36,7 @@ struct Material
 {
     vec3 albedo; 
     float roughness;
+    int matType;
 };
 
 struct Sphere {
@@ -137,6 +141,18 @@ float HitSphere(Sphere sphere, Ray ray) {
     return closestT;
 }
 
+void ScatterDiffuseMat(inout vec3 dir, in HitPayload payload, inout uint seed) {
+    dir = payload.worldNormal + RandomInUnitSphere(seed);
+}
+
+void ScatterMetallicMat(inout vec3 dir, in HitPayload payload, float roughness, inout uint seed) {
+    dir = reflect(dir, payload.worldNormal + roughness * RandomVec3MinMax(seed, -0.5, 0.5));
+}
+
+void ScatterGlassMat(inout vec3 dir, in HitPayload payload) {
+
+}
+
 HitPayload OnHit(Scene scene, Ray ray, float hitDist) {
     HitPayload payload;
 
@@ -199,13 +215,15 @@ vec3 GetColor(Scene scene, Ray ray) {
         Sphere sphere = spheres[scene.sphereIdx];
         Material mat = materials[sphere.matIdx];
 
-        // float lightIntensity = max(dot(payload.worldNormal, normalize(scene.lightPos - payload.worldPos)), 0.0f);
-        // color += contrib * mat.albedo * lightIntensity * scene.lightColor;
         contrib *= mat.albedo * scene.lightColor;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
-        // ray.dir = reflect(ray.dir, payload.worldNormal + mat.roughness * RandomVec3MinMax(scene.rndmSeed, -0.5f, 0.5f));
-        ray.dir = payload.worldNormal + RandomInUnitSphere(scene.rndmSeed);
+        if(mat.matType == DIFFUSE_MAT_IDX)
+            ScatterDiffuseMat(ray.dir, payload, scene.rndmSeed);
+        else if(mat.matType == METALLIC_MAT_IDX)
+            ScatterMetallicMat(ray.dir, payload, mat.roughness, scene.rndmSeed);
+        else if(mat.matType == GLASS_MAT_IDX)
+            ScatterGlassMat(ray.dir, payload);
     }
 
     return color;
@@ -239,8 +257,9 @@ void main() {
 
     FragColor = vec4(GetColor(PrepScene(seed), camRay), 1.0);
 
-    if((u_Accumulate == 1) && (u_CamActive == 0) && (u_FrameIdx <= 10000)) {
+    int frameIdx = clamp(u_FrameIdx, 1, 1000);
+    if((u_Accumulate == 1) && (u_CamActive == 0)) {
         uv = gl_FragCoord.xy / u_resolution; 
-        FragColor = (texture(t_PrevFrame, uv) * (u_FrameIdx - 1.0) + FragColor) / u_FrameIdx;
+        FragColor = (texture(t_PrevFrame, uv) * (frameIdx - 1.0) + FragColor) / frameIdx;
     }
 }

@@ -21,6 +21,7 @@ void Scene::Serialize(Scene& scene, std::filesystem::path path)
     {
         s_Out << mat.albedo.x << " " << mat.albedo.y << " " << mat.albedo.z << "\n";
         s_Out << mat.roughness << "\n";
+        s_Out << mat.matIdx << "\n";
     }
 
     s_Out.close();
@@ -57,6 +58,7 @@ void Scene::Deserialize(Scene& scene, std::filesystem::path path)
     {
         s_In >> mat.albedo.x >> mat.albedo.y >> mat.albedo.z;
         s_In >> mat.roughness;
+        s_In >> mat.matIdx;
     }
 
     s_In.close();
