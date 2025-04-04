@@ -12,7 +12,9 @@ struct alignas(16) Material
 {
     glm::vec3 albedo = glm::vec3(1.0f);
     float roughness = 0.01f;
+    glm::vec3 emissionColor = glm::vec3(0.0f);
     int matIdx = 0;
+    float emissionPower = 0.0f;
 };
 
 struct alignas(16) Sphere

@@ -233,6 +233,22 @@ void Tracer::Run()
                             ImGui::Spacing();
                             ImGui::Spacing();
 
+                            ImGui::Text("Emission Color");
+                            if(ImGui::ColorEdit3(("##emissionColor" + std::to_string(i)).c_str(), &m_Scene.materials[i].emissionColor[0]))
+                                resetFrameIdx = true;
+                            
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+
+                            ImGui::Text("Emission Power");
+                            if(ImGui::DragFloat(("##emissivePower" + std::to_string(i)).c_str(), &m_Scene.materials[i].emissionPower, 0.1f, 0.0f, 10.0f))
+                                resetFrameIdx = true;
+
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+
                             ImGui::Text("Roughness");
                             if(ImGui::DragFloat(("##rougness" + std::to_string(i)).c_str(), &m_Scene.materials[i].roughness, 0.1f, 0.0f, 1.0f))
                                 resetFrameIdx = true;

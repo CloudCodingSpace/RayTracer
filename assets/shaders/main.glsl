@@ -36,7 +36,9 @@ struct Material
 {
     vec3 albedo; 
     float roughness;
+    vec3 emissionColor;
     int matType;
+    float emissionPower;
 };
 
 struct Sphere {
@@ -207,8 +209,7 @@ vec3 GetColor(Scene scene, Ray ray) {
 
         if(payload.hitDist == INVALID)
         {
-            color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure;
-            color *= contrib;
+            color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure * contrib;
             break;
         }
 
@@ -216,9 +217,12 @@ vec3 GetColor(Scene scene, Ray ray) {
         Material mat = materials[sphere.matIdx];
 
         contrib *= mat.albedo * scene.lightColor;
+        color += mat.emissionColor * mat.emissionPower * contrib;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
-        if(mat.matType == DIFFUSE_MAT_IDX)
+        if(mat.emissionPower > 0.0)
+            ScatterDiffuseMat(ray.dir, payload, scene.rndmSeed);
+        else if(mat.matType == DIFFUSE_MAT_IDX)
             ScatterDiffuseMat(ray.dir, payload, scene.rndmSeed);
         else if(mat.matType == METALLIC_MAT_IDX)
             ScatterMetallicMat(ray.dir, payload, mat.roughness, scene.rndmSeed);
