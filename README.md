@@ -36,6 +36,14 @@ This project uses a couple of dependencies. Namely :-
  - Can save the scene as an png image, found at output/img.png that is present in the same folder as the RayTracer executable.
  - Can render multiple spheres
  - Can add spheres during runtime
- - Can change the sphere properties during runtime through ImGui
+ - Can add materials during runtime
+ - Can change the sphere & material properties during runtime through ImGui
  - Can do some reflection and the number of bounces per ray can be controlled through the ImGui Settings panel
  - The ImGui window can be dragged out of the parent window by the ImGui viewports feature
+ - Can serialize and deserialize the scene data in an scene.save file
+ - Can select the material type at runtime like Diffuse & Metallic
+
+ ## Screenshots
+ ![img0](screenshots/img0.png)
+ ![img1](screenshots/img1.png)
+ ![img2](screenshots/img2.png)
