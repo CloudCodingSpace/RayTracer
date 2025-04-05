@@ -19,7 +19,7 @@
 #include <cstdlib>
 #include <filesystem>
 
-// TODO: Save images as img0, img1 and not override everytime!
+static int s_SaveImgIdx = 0;
 
 void Tracer::Run()
 {
@@ -108,8 +108,10 @@ void Tracer::Run()
                         std::filesystem::create_directory("output");
                     }
 
-                    WriteToPngFile("output/img.png", pixels, width, height);
+                    WriteToPngFile("output/img" + std::to_string(s_SaveImgIdx) + ".png", pixels, width, height);
                     delete[] pixels;
+
+                    s_SaveImgIdx++;
                 });
 
                 saveThread.detach();
