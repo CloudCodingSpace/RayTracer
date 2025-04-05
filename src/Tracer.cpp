@@ -19,6 +19,8 @@
 #include <cstdlib>
 #include <filesystem>
 
+// TODO: Save images as img0, img1 and not override everytime!
+
 void Tracer::Run()
 {
     Init();
@@ -252,15 +254,16 @@ void Tracer::Run()
                             int selectedIndex = m_Scene.materials[i].matIdx;  
 
                             if (ImGui::BeginCombo(("Material Type##" + std::to_string(i)).c_str(), items[selectedIndex])) {
-                                for (int j = 0; j < IM_ARRAYSIZE(items); j++) {
+                                for (int j = 0; j < IM_ARRAYSIZE(items); j++) 
+                                {
                                     bool isSelected = (selectedIndex == j);
-                                    if (ImGui::Selectable(items[j], isSelected)) {
-                                        m_Scene.materials[i].matIdx = j;  // Update material-specific index
+                                    if (ImGui::Selectable(items[j], isSelected)) 
+                                    {
+                                        m_Scene.materials[i].matIdx = j;
                                         resetFrameIdx = true;
                                     }
-                                    if (isSelected) {
+                                    if (isSelected)
                                         ImGui::SetItemDefaultFocus();
-                                    }
                                 }
                                 ImGui::EndCombo();
                             }
