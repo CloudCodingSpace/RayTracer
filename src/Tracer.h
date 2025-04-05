@@ -28,7 +28,7 @@ private:
     glm::vec3 m_SkyColor = glm::vec3(0.0f);
     Scene m_Scene;
 
-    bool m_Render = false, m_IsSceneHovered = false, m_Accumulate = false, m_UseSkybox = true;
+    bool m_IsSceneHovered = false;
     float lastTime, deltaTime, currentTime;
     uint32_t vao, vbo, m_SceneSSBO, m_MatSSBO;
     int m_Bounces = 10, m_FrameIdx = 1;

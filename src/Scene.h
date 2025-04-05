@@ -28,6 +28,7 @@ struct Scene
 {
     std::vector<Sphere> spheres;
     std::vector<Material> materials;
+    bool render = false, accumulate = false, useSkybox = true;
 
     static void Serialize(Scene& scene, std::filesystem::path path);
     static void Deserialize(Scene& scene, std::filesystem::path path);

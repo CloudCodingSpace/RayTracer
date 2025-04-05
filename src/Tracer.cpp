@@ -33,7 +33,7 @@ void Tracer::Run()
             deltaTime = currentTime - lastTime;
             lastTime = currentTime;
 
-            if(m_Render)
+            if(m_Scene.render)
             {
                 if(m_IsSceneHovered || !m_Camera.IsFirstMouseUsage())
                     m_Camera.Update(m_Window, deltaTime);
@@ -41,15 +41,6 @@ void Tracer::Run()
 
             if(Input::IsKeyPressed(m_Window, GLFW_KEY_ESCAPE))
                 break;
-            
-            
-            if(m_Accumulate && !m_Camera.IsActive())
-                m_FrameIdx++;
-            else
-            {
-                m_FrameIdx = 1;
-                m_PrevFrame.GetTexture().SetPixels(nullptr);
-            }
         }
         
         // ImGui
@@ -60,7 +51,7 @@ void Tracer::Run()
 
             m_IsSceneHovered = ImGui::IsWindowHovered();
             
-            if(m_Render)
+            if(m_Scene.render)
             {
                 m_Fb.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
                 if(m_PrevFrame.Resize(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y))
@@ -95,13 +86,13 @@ void Tracer::Run()
             ImGui::Text("Delta Time: %.2fms", deltaTime * 1000);
             ImGui::Text("%.0f FPS", 1.0f/deltaTime);
             
-            ImGui::Checkbox("Render", &m_Render);
-            ImGui::Checkbox("Accumulate", &m_Accumulate);
+            ImGui::Checkbox("Render", &m_Scene.render);
+            ImGui::Checkbox("Accumulate", &m_Scene.accumulate);
             
             ImGui::Spacing();
             ImGui::Spacing();
             
-            if (ImGui::Button("Save to file") && m_Render)
+            if (ImGui::Button("Save to file") && m_Scene.render)
             {
                 int width = m_Fb.GetTexture().GetWidth();
                 int height = m_Fb.GetTexture().GetHeight();
@@ -127,10 +118,6 @@ void Tracer::Run()
             bool resetFrameIdx = false;
             if(ImGui::TreeNodeEx("Skybox", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                
                 ImGui::Text("Sky Color");
                 if(ImGui::ColorEdit3("##skyColor", &m_SkyColor[0]))
                     resetFrameIdx = true;
@@ -139,7 +126,9 @@ void Tracer::Run()
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
 
-                ImGui::Checkbox("Use Skybox", &m_UseSkybox);
+                ImGui::Checkbox("Use Skybox", &m_Scene.useSkybox);
+                if(ImGui::IsItemClicked())
+                    resetFrameIdx = true;
 
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
@@ -325,7 +314,11 @@ void Tracer::Run()
 
             ImGui::End();
 
-            if(resetFrameIdx)
+            if(!resetFrameIdx && m_Scene.accumulate && !m_Camera.IsActive())
+            {
+                m_FrameIdx++;
+            }
+            else
             {
                 m_FrameIdx = 1;
                 m_PrevFrame.GetTexture().SetPixels(nullptr);
@@ -476,10 +469,10 @@ void Tracer::Render(int width, int height)
 
     m_Shader.PutInt("u_MaxBounces", m_Bounces);
     m_Shader.PutInt("u_FrameIdx", m_FrameIdx);
-    m_Shader.PutInt("u_Accumulate", (int)m_Accumulate);
+    m_Shader.PutInt("u_Accumulate", (int)m_Scene.accumulate);
     m_Shader.PutInt("u_CamActive", (int)m_Camera.IsActive());
     m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
-    m_Shader.PutInt("u_UseSkybox", m_UseSkybox);
+    m_Shader.PutInt("u_UseSkybox", m_Scene.useSkybox);
 
     m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
     m_Shader.PutVec3("u_SkyColor", m_SkyColor);

@@ -9,6 +9,9 @@ void Scene::Serialize(Scene& scene, std::filesystem::path path)
 
     s_Out << scene.spheres.size() << "\n";
     s_Out << scene.materials.size() << "\n";
+    s_Out << (int)scene.render << "\n";
+    s_Out << (int)scene.accumulate << "\n";
+    s_Out << (int)scene.useSkybox << "\n";
 
     for(auto& sphere : scene.spheres)
     {
@@ -45,6 +48,9 @@ void Scene::Deserialize(Scene& scene, std::filesystem::path path)
 
     s_In >> sphereCount;
     s_In >> matCount;
+    s_In >> scene.render;
+    s_In >> scene.accumulate;
+    s_In >> scene.useSkybox;
 
     scene.spheres.resize(sphereCount);
     scene.materials.resize(matCount);
