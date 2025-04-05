@@ -49,20 +49,16 @@ struct Sphere {
 
 struct Scene {
     int sphereIdx;
-    vec3 lightPos;
-    vec3 lightColor;
     uint rndmSeed;
 };
 
 uniform float u_SkyboxExposure;
 uniform sampler2D t_Skybox;
+uniform vec3 u_SkyColor;
 
 uniform vec2 u_resolution;
 uniform vec3 u_camPos;
 uniform vec3 u_camFront;
-
-uniform vec3 u_LightPos;
-uniform vec3 u_LightColor;
 
 uniform int u_MaxBounces;
 uniform uint u_RndmSeed;
@@ -70,6 +66,7 @@ uniform int u_FrameIdx;
 uniform int u_Accumulate;
 uniform int u_CamActive;
 uniform int u_SphereCount;
+uniform int u_UseSkybox;
 
 uniform sampler2D t_PrevFrame;
 
@@ -209,14 +206,20 @@ vec3 GetColor(Scene scene, Ray ray) {
 
         if(payload.hitDist == INVALID)
         {
-            color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure * contrib;
+            if(u_UseSkybox == 1)
+            {
+                color += texture(t_Skybox, GetSkyboxTexCoord(ray.dir)).rgb * u_SkyboxExposure * contrib;
+                break;
+            }
+
+            color += u_SkyColor * contrib;
             break;
         }
 
         Sphere sphere = spheres[scene.sphereIdx];
         Material mat = materials[sphere.matIdx];
 
-        contrib *= mat.albedo * scene.lightColor;
+        contrib *= mat.albedo;
         color += mat.emissionColor * mat.emissionPower * contrib;
 
         ray.origin = payload.worldPos + payload.worldNormal * 0.0001f;
@@ -235,8 +238,6 @@ vec3 GetColor(Scene scene, Ray ray) {
 
 Scene PrepScene(uint seed) {
     Scene scene;
-    scene.lightPos = u_LightPos;
-    scene.lightColor = u_LightColor;
     scene.rndmSeed = seed;
 
     return scene;

@@ -127,6 +127,24 @@ void Tracer::Run()
             bool resetFrameIdx = false;
             if(ImGui::TreeNodeEx("Skybox", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                
+                ImGui::Text("Sky Color");
+                if(ImGui::ColorEdit3("##skyColor", &m_SkyColor[0]))
+                    resetFrameIdx = true;
+                
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+
+                ImGui::Checkbox("Use Skybox", &m_UseSkybox);
+
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+                ImGui::Spacing(); 
+
                 ImGui::Text("Skybox Exposure");
                 if(ImGui::DragFloat("##skyboxExposure", &m_Exposure, 0.1f, 1.0f, 10.0f))
                     resetFrameIdx = true;
@@ -163,21 +181,9 @@ void Tracer::Run()
             
             if(ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanFullWidth))
             {
-                ImGui::Text("Light Pos");
-                if(ImGui::DragFloat3("##lightPos", &m_LightPos[0], 0.01f, -100.0f, 100.0f))
-                    resetFrameIdx = true;
-                
                 ImGui::Spacing(); 
                 ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                
-                ImGui::Text("Light Color");
-                if(ImGui::ColorEdit3("##lightColor", &m_LightColor[0]))
-                    resetFrameIdx = true;
-                
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
-                ImGui::Spacing(); 
+                ImGui::Spacing();
                 
                 ImGui::Text("Max Bounces Per Ray");
                 if(ImGui::DragInt("##maxBounces", &m_Bounces, 1.0f, 1, 100))
@@ -473,10 +479,10 @@ void Tracer::Render(int width, int height)
     m_Shader.PutInt("u_Accumulate", (int)m_Accumulate);
     m_Shader.PutInt("u_CamActive", (int)m_Camera.IsActive());
     m_Shader.PutInt("u_SphereCount", m_Scene.spheres.size());
+    m_Shader.PutInt("u_UseSkybox", m_UseSkybox);
 
     m_Shader.PutUint("u_RndmSeed", (uint32_t)rand());
-    m_Shader.PutVec3("u_LightPos", m_LightPos);
-    m_Shader.PutVec3("u_LightColor", m_LightColor);
+    m_Shader.PutVec3("u_SkyColor", m_SkyColor);
 
     m_SkyboxTex.Active(1);
     m_SkyboxTex.Bind();
