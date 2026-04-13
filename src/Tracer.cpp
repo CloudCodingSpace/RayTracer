@@ -247,14 +247,19 @@ void Tracer::Run()
                             ImGui::Spacing();
                             ImGui::Spacing();
                             ImGui::Spacing();
-
+                            
                             ImGui::Text("Roughness");
                             if(ImGui::DragFloat(("##rougness" + std::to_string(i)).c_str(), &m_Scene.materials[i].roughness, 0.1f, 0.0f, 1.0f))
                                 resetFrameIdx = true;
 
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+
                             const char* items[] = { "Diffuse", "Metallic" };
                             int selectedIndex = m_Scene.materials[i].matIdx;
 
+                            ImGui::Text("Material Type");
                             if (ImGui::BeginCombo(("Material Type##" + std::to_string(i)).c_str(), items[selectedIndex])) {
                                 for (int j = 0; j < IM_ARRAYSIZE(items); j++) 
                                 {
@@ -303,7 +308,7 @@ void Tracer::Run()
                             if(ImGui::DragInt(("##matIdx" + std::to_string(i)).c_str(), &m_Scene.spheres[i].materialIdx, 1.0f))
                                 resetFrameIdx = true;
 
-                            if(m_Scene.spheres[i].materialIdx >= m_Scene.materials.size())
+                            if(m_Scene.spheres[i].materialIdx >= m_Scene.materials.size() || m_Scene.spheres[i].materialIdx < 0)
                             {
                                 m_Scene.spheres[i].materialIdx = 0;
                             }
