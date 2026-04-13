@@ -17,7 +17,6 @@ const float INVALID = -1.0;
 const uint UINT_MAX = 4294967295U;
 const int DIFFUSE_MAT_IDX = 0;
 const int METALLIC_MAT_IDX = 1;
-const int GLASS_MAT_IDX = 2;
 
 out vec4 FragColor;
 
@@ -148,10 +147,6 @@ void ScatterMetallicMat(inout vec3 dir, in HitPayload payload, float roughness, 
     dir = reflect(dir, payload.worldNormal + roughness * RandomVec3MinMax(seed, -0.5, 0.5));
 }
 
-void ScatterGlassMat(inout vec3 dir, in HitPayload payload) {
-
-}
-
 HitPayload OnHit(Scene scene, Ray ray, float hitDist) {
     HitPayload payload;
 
@@ -229,8 +224,6 @@ vec3 GetColor(Scene scene, Ray ray) {
             ScatterDiffuseMat(ray.dir, payload, scene.rndmSeed);
         else if(mat.matType == METALLIC_MAT_IDX)
             ScatterMetallicMat(ray.dir, payload, mat.roughness, scene.rndmSeed);
-        else if(mat.matType == GLASS_MAT_IDX)
-            ScatterGlassMat(ray.dir, payload);
     }
 
     return color;

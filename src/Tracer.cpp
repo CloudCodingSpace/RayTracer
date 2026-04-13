@@ -252,8 +252,8 @@ void Tracer::Run()
                             if(ImGui::DragFloat(("##rougness" + std::to_string(i)).c_str(), &m_Scene.materials[i].roughness, 0.1f, 0.0f, 1.0f))
                                 resetFrameIdx = true;
 
-                            const char* items[] = { "Diffuse", "Metallic", "Glass" };
-                            int selectedIndex = m_Scene.materials[i].matIdx;  
+                            const char* items[] = { "Diffuse", "Metallic" };
+                            int selectedIndex = m_Scene.materials[i].matIdx;
 
                             if (ImGui::BeginCombo(("Material Type##" + std::to_string(i)).c_str(), items[selectedIndex])) {
                                 for (int j = 0; j < IM_ARRAYSIZE(items); j++) 
@@ -485,7 +485,7 @@ void Tracer::Render(int width, int height)
     m_SkyboxTex.Active(1);
     m_SkyboxTex.Bind();
 
-    m_SkyboxTex.Active(2);
+    m_PrevFrame.GetTexture().Active(2);
     m_PrevFrame.GetTexture().Bind();
 
     glBindVertexArray(vao);
