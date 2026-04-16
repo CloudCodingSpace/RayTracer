@@ -1,8 +1,8 @@
-#include "Tracer.h"
+#include "RayTracer.h"
 
-int main() 
+int main(void)
 {
-    Tracer tracer;
+    RayTracer tracer;
     tracer.Run();
 
     return 0;
