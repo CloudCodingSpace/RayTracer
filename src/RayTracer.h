@@ -66,6 +66,8 @@ private:
     VkFence m_InFlightFences[FRAMES_IN_FLIGHT];
     VkSemaphore m_ImageAvailable[FRAMES_IN_FLIGHT];
     std::vector<VkSemaphore> m_RenderFinished;
+
+    VkDescriptorPool m_UiDescPool = nullptr;
     
     u32 m_ImageIdx = 0;
     u32 m_FrameIdx = 0;

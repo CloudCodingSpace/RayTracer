@@ -6,6 +6,10 @@
 #include <algorithm>
 #include <vector>
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_vulkan.h>
+
 #include <vulkan/vk_enum_string_helper.h>
 
 #define VK_CHECK(result) do { if(result != VK_SUCCESS) { printf("VkResult: %s (line: %d, file: %s\n", string_VkResult(result), __LINE__, __FILE__); assert(false); } } while(0);
@@ -249,11 +253,68 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
             VK_CHECK(vkCreateSemaphore(m_Device, &semaInfo, nullptr, &sema));
         }
     }
+    // UI descriptor pool
+    {
+        VkDescriptorPoolSize pool_sizes[] =
+        {
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE },
+        };
+        VkDescriptorPoolCreateInfo pool_info = {};
+        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        pool_info.maxSets = 0;
+        for (VkDescriptorPoolSize& pool_size : pool_sizes)
+            pool_info.maxSets += pool_size.descriptorCount;
+        pool_info.poolSizeCount = 1;
+        pool_info.pPoolSizes = pool_sizes;
+        VK_CHECK(vkCreateDescriptorPool(m_Device, &pool_info, nullptr, &m_UiDescPool));
+    }
+    // ImGui
+    {
+        IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+
+        ImGui::StyleColorsDark();
+
+        ImGuiIO& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		ImGuiStyle& style = ImGui::GetStyle();
+		style.WindowPadding = ImVec2(0, 0);
+
+        io.Fonts->AddFontFromFileTTF("assets/fonts/consolas.ttf", 18.0f, nullptr, nullptr);
+
+        ImGui_ImplGlfw_InitForVulkan(m_Window, true);
+        
+        ImGui_ImplVulkan_InitInfo info{};
+        info.Subpass = 0;
+        info.Allocator = nullptr;
+        info.ApiVersion = VK_API_VERSION_1_0;
+        info.DescriptorPool = m_UiDescPool;
+        info.Device = m_Device;
+        info.ImageCount = FRAMES_IN_FLIGHT;
+        info.MinImageCount = FRAMES_IN_FLIGHT;
+        info.Instance = m_Instance;
+        info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        info.PhysicalDevice = m_PhysicalDevice;
+        info.Queue = m_GraphicsQueue;
+        info.QueueFamily = m_GraphicsQueueIdx;
+        info.RenderPass = m_Pass;
+        
+        ImGui_ImplVulkan_Init(&info);
+        ImGui_ImplVulkan_CreateFontsTexture();
+    }
 }
 
 RayTracer::~RayTracer()
 {
     VK_CHECK(vkDeviceWaitIdle(m_Device));
+
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    vkDestroyDescriptorPool(m_Device, m_UiDescPool, nullptr);
 
     for(auto& fence : m_InFlightFences)
         vkDestroyFence(m_Device, fence, nullptr);
@@ -291,7 +352,7 @@ void RayTracer::Run()
         
         // Draw commands
         {
-
+            ImGui::ShowDemoWindow();
         }
         
         EndFrame();
@@ -341,11 +402,24 @@ bool RayTracer::StartFrame()
 
     vkCmdBeginRenderPass(m_GraphicsCmdBuffs[m_FrameIdx], &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+    ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+    ImGui::DockSpaceOverViewport(ImGui::GetID("Dockspace"), ImGui::GetMainViewport());
+
     return true;
 }
 
 void RayTracer::EndFrame()
 {
+    ImGui::EndFrame();
+	ImGui::Render();
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), m_GraphicsCmdBuffs[m_FrameIdx], nullptr);
+
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault();
+
     vkCmdEndRenderPass(m_GraphicsCmdBuffs[m_FrameIdx]);
     VK_CHECK(vkEndCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx]));
 
