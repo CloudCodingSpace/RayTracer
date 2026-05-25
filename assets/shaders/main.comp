@@ -9,6 +9,9 @@ layout (push_constant) uniform PushConstant {
 } pd;
 
 void main() {
-    vec2 uv = gl_GlobalInvocationID.xy / pd.resolution;
-    imageStore(u_Image, ivec2(gl_GlobalInvocationID.xy), vec4(uv, 0.0, 1.0));
+    ivec2 fragCoord = ivec2(gl_GlobalInvocationID.xy);
+
+    vec2 uv = vec2(fragCoord) / pd.resolution;
+    vec3 color = vec3(uv, 0.0);
+    imageStore(u_Image, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1.0));
 }

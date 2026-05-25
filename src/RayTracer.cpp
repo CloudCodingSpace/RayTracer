@@ -13,6 +13,38 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 #define VK_CHECK(result) do { if(result != VK_SUCCESS) { printf("VkResult: %s (line: %d, file: %s\n", string_VkResult(result), __LINE__, __FILE__); assert(false); } } while(0);
+#define CLAMP(value, min, max) ((value < min) ? min : (value > max) ? max : value)
+
+static u8* ReadFile(std::string path, u64* size) {
+    FILE* file = fopen(path.c_str(), "rb");
+    assert(file && "Failed to open file!");
+
+    fseek(file, 0, SEEK_END);
+    *size = ftell(file);
+    rewind(file);
+
+    u8* content = new u8[*size];
+    fread(content, sizeof(u8) * *size, 1, file);
+
+    fclose(file);
+
+    return content;
+}
+
+static uint32_t FindMemoryType(VkPhysicalDevice device, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties props = {};
+    vkGetPhysicalDeviceMemoryProperties(device, &props);
+
+    for (uint32_t i = 0; i < props.memoryTypeCount; i++)
+    {
+        if ((typeFilter & (1 << i)) && (props.memoryTypes[i].propertyFlags & properties) == properties)
+        {
+            return i;
+        }
+    }
+
+    assert(false && "Failed to find the suitable memory index!");
+}
 
 RayTracer::RayTracer() : m_Width{800}, m_Height{600}
 {
@@ -119,22 +151,21 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
             m_PresentQueueIdx,
             m_ComputeQueueIdx
         };
-        std::vector<i32> uniqueQueues;
 
         for(i32 i = 0; i < 3; i++) 
         {
             bool exists = false;
-            for(i32 idx : uniqueQueues) 
+            for(i32 idx : m_UniqueQueues) 
             {
                 if(idx == indices[i])
                     exists = true;
             }
             if(!exists)
-                uniqueQueues.push_back(indices[i]);
+                m_UniqueQueues.push_back(indices[i]);
         }
 
         std::vector<VkDeviceQueueCreateInfo> queueInfos;
-        for(i32 idx : uniqueQueues)
+        for(i32 idx : m_UniqueQueues)
         {
             VkDeviceQueueCreateInfo info = {
                 .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -245,6 +276,7 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
         {
             VK_CHECK(vkCreateFence(m_Device, &fenceInfo, nullptr, &m_InFlightFences[i]));
             VK_CHECK(vkCreateSemaphore(m_Device, &semaInfo, nullptr, &m_ImageAvailable[i]));
+            VK_CHECK(vkCreateSemaphore(m_Device, &semaInfo, nullptr, &m_ComputeFinished[i]));
         }
         
         m_RenderFinished.resize(m_ScImages.size());
@@ -253,18 +285,232 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
             VK_CHECK(vkCreateSemaphore(m_Device, &semaInfo, nullptr, &sema));
         }
     }
+    // Storage images
+    {
+        for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++)
+        {
+            {
+                VkImageCreateInfo info = {};
+                info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+                info.arrayLayers = 1;
+                info.extent = { m_StorageImages[i].width, m_StorageImages[i].height, 1 };
+                info.format = VK_FORMAT_R8G8B8A8_UNORM;
+                info.imageType = VK_IMAGE_TYPE_2D;
+                info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                info.mipLevels = 1;
+                info.sharingMode = m_UniqueQueues.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
+                info.queueFamilyIndexCount = m_UniqueQueues.size();
+                info.pQueueFamilyIndices = m_UniqueQueues.data();
+                info.samples = VK_SAMPLE_COUNT_1_BIT;
+                info.tiling = VK_IMAGE_TILING_OPTIMAL;
+                info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+
+                VK_CHECK(vkCreateImage(m_Device, &info, nullptr, &m_StorageImages[i].image));
+            }
+            {
+                VkMemoryRequirements req = {};
+                vkGetImageMemoryRequirements(m_Device, m_StorageImages[i].image, &req);
+
+                VkMemoryAllocateInfo info = {};
+                info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                info.allocationSize = req.size;
+                info.memoryTypeIndex = FindMemoryType(m_PhysicalDevice, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+                VK_CHECK(vkAllocateMemory(m_Device, &info, nullptr, &m_StorageImages[i].memory));
+                VK_CHECK(vkBindImageMemory(m_Device, m_StorageImages[i].image, m_StorageImages[i].memory, 0));
+            }
+            {
+                VkImageViewCreateInfo info = {};
+                info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                info.components = { VK_COMPONENT_SWIZZLE_IDENTITY };
+                info.format = VK_FORMAT_R8G8B8A8_UNORM;
+                info.image = m_StorageImages[i].image;
+                info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                info.subresourceRange.baseArrayLayer = 0;
+                info.subresourceRange.baseMipLevel = 0;
+                info.subresourceRange.levelCount = 1;
+                info.subresourceRange.layerCount = 1;
+
+                VK_CHECK(vkCreateImageView(m_Device, &info, nullptr, &m_StorageImages[i].view));
+            }
+            {
+                VkSamplerCreateInfo info = {};
+                info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+                info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+                info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+                info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+                info.anisotropyEnable = VK_FALSE;
+                info.magFilter = VK_FILTER_LINEAR;
+                info.minFilter = VK_FILTER_LINEAR;
+                info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+                info.compareEnable = VK_FALSE;
+                info.compareOp = VK_COMPARE_OP_ALWAYS;
+                info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+                info.mipLodBias = 0.0f;
+                info.minLod = 0.0f;
+                info.maxLod = 0.0f;
+
+                VK_CHECK(vkCreateSampler(m_Device, &info, nullptr, &m_StorageImages[i].sampler));
+            }
+
+            {
+                VkFence fence = nullptr;
+                {
+                    VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+                    VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
+                }
+
+                VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+                vkBeginCommandBuffer(m_GraphicsCmdBuffs[i], &beginInfo);
+
+                VkImageMemoryBarrier barrier = {};
+                barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                barrier.image = m_StorageImages[i].image;
+                barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                barrier.subresourceRange.layerCount = 1;
+                barrier.subresourceRange.levelCount = 1;
+                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+                vkCmdPipelineBarrier(m_GraphicsCmdBuffs[i], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                        0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+                vkEndCommandBuffer(m_GraphicsCmdBuffs[i]);
+
+                VkSubmitInfo info = {}; 
+                info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                info.commandBufferCount = 1;
+                info.pCommandBuffers = &m_GraphicsCmdBuffs[i];
+
+                VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &info, fence));
+                VK_CHECK(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX));
+
+                vkResetCommandBuffer(m_GraphicsCmdBuffs[i], 0);
+                vkDestroyFence(m_Device, fence, nullptr);
+            }
+        }
+    }
+    // Descriptors
+    {
+        {
+            VkDescriptorSetLayoutBinding binding = {};
+            binding.binding = 0;
+            binding.descriptorCount = 1;
+            binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+            VkDescriptorSetLayoutCreateInfo layInfo = {};
+            layInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            layInfo.bindingCount = 1;
+            layInfo.pBindings = &binding;
+            
+            VK_CHECK(vkCreateDescriptorSetLayout(m_Device, &layInfo, nullptr, &m_DescLayout));
+        }
+
+        {
+            VkDescriptorPoolSize size;
+            size.descriptorCount = FRAMES_IN_FLIGHT;
+            size.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+            VkDescriptorPoolCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            info.maxSets = FRAMES_IN_FLIGHT;
+            info.poolSizeCount = 1;
+            info.pPoolSizes = &size;
+            
+            VK_CHECK(vkCreateDescriptorPool(m_Device, &info, nullptr, &m_DescPool));
+        }
+
+        {
+            VkDescriptorSetAllocateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            info.descriptorPool = m_DescPool;
+            info.descriptorSetCount = 1;
+            info.pSetLayouts = &m_DescLayout;
+            
+            for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++)
+                VK_CHECK(vkAllocateDescriptorSets(m_Device, &info, &m_Sets[i]));
+        }
+
+        {
+            for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++)
+            {
+                VkDescriptorImageInfo imgInfo = {};
+                imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                imgInfo.imageView = m_StorageImages[i].view;
+                imgInfo.sampler = m_StorageImages[i].sampler;
+
+                VkWriteDescriptorSet write = {};
+                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.descriptorCount = 1;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                write.dstSet = m_Sets[i];
+                write.pImageInfo = &imgInfo;
+                write.dstBinding = 0;
+
+                vkUpdateDescriptorSets(m_Device, 1, &write, 0, nullptr);
+            }
+        }
+    }
+    // Pipeline
+    {
+        {
+            VkPushConstantRange range = {};
+            range.offset = 0;
+            range.size = sizeof(m_PushConstantData);
+            range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+            VkPipelineLayoutCreateInfo layInfo = {};
+            layInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            layInfo.pushConstantRangeCount = 1;
+            layInfo.pPushConstantRanges = &range;
+            layInfo.setLayoutCount = 1;
+            layInfo.pSetLayouts = &m_DescLayout;
+            
+            VK_CHECK(vkCreatePipelineLayout(m_Device, &layInfo, nullptr, &m_PipelineLayout));
+        }
+
+        
+        VkShaderModuleCreateInfo modInfo = {};
+        modInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+
+        u8* code = ReadFile("./assets/shaders/main.comp.spv", &modInfo.codeSize);
+        modInfo.pCode = (const u32*)code;
+
+        VkShaderModule mod = nullptr;
+        VK_CHECK(vkCreateShaderModule(m_Device, &modInfo, nullptr, &mod));
+
+        VkPipelineShaderStageCreateInfo stage = {};
+        stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+        stage.module = mod;
+        stage.pName = "main";
+
+        VkComputePipelineCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        info.basePipelineIndex = -1;
+        info.layout = m_PipelineLayout;
+        info.stage = stage;
+
+        VK_CHECK(vkCreateComputePipelines(m_Device, nullptr, 1, &info, nullptr, &m_Pipeline));
+        vkDestroyShaderModule(m_Device, mod, nullptr);
+        delete[] code;
+    }
+
     // UI descriptor pool
     {
         VkDescriptorPoolSize pool_sizes[] =
         {
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10000 },
         };
         VkDescriptorPoolCreateInfo pool_info = {};
         pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pool_info.maxSets = 0;
-        for (VkDescriptorPoolSize& pool_size : pool_sizes)
-            pool_info.maxSets += pool_size.descriptorCount;
+        pool_info.maxSets = 10000;
         pool_info.poolSizeCount = 1;
         pool_info.pPoolSizes = pool_sizes;
         VK_CHECK(vkCreateDescriptorPool(m_Device, &pool_info, nullptr, &m_UiDescPool));
@@ -303,6 +549,10 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
         
         ImGui_ImplVulkan_Init(&info);
         ImGui_ImplVulkan_CreateFontsTexture();
+
+        for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
+            m_IgSets[i] = ImGui_ImplVulkan_AddTexture(m_StorageImages[i].sampler, m_StorageImages[i].view, VK_IMAGE_LAYOUT_GENERAL);
+        }
     }
 }
 
@@ -310,15 +560,34 @@ RayTracer::~RayTracer()
 {
     VK_CHECK(vkDeviceWaitIdle(m_Device));
 
+    for(auto& set : m_IgSets)
+        ImGui_ImplVulkan_RemoveTexture(set);
+
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
+    vkDestroyPipeline(m_Device, m_Pipeline, nullptr);
+    
+    vkDestroyDescriptorPool(m_Device, m_DescPool, nullptr);
+    vkDestroyDescriptorSetLayout(m_Device, m_DescLayout, nullptr);
+
     vkDestroyDescriptorPool(m_Device, m_UiDescPool, nullptr);
+
+    for(auto& image : m_StorageImages) 
+    {
+        vkDestroySampler(m_Device, image.sampler, nullptr);
+        vkDestroyImageView(m_Device, image.view, nullptr);
+        vkDestroyImage(m_Device, image.image, nullptr);
+        vkFreeMemory(m_Device, image.memory, nullptr);
+    }
 
     for(auto& fence : m_InFlightFences)
         vkDestroyFence(m_Device, fence, nullptr);
     for(auto& sema : m_ImageAvailable)
+        vkDestroySemaphore(m_Device, sema, nullptr);
+    for(auto& sema : m_ComputeFinished)
         vkDestroySemaphore(m_Device, sema, nullptr);
     for(auto& sema : m_RenderFinished)
         vkDestroySemaphore(m_Device, sema, nullptr);
@@ -352,7 +621,34 @@ void RayTracer::Run()
         
         // Draw commands
         {
-            ImGui::ShowDemoWindow();
+            m_PushConstantData.resolution[0] = m_StorageImages[0].width;
+            m_PushConstantData.resolution[1] = m_StorageImages[0].height;
+
+            const int localSizeX = 16;
+            const int localSizeY = 16;
+
+            vkCmdBindPipeline(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_BIND_POINT_COMPUTE, m_Pipeline);
+            vkCmdPushConstants(m_ComputeCmdBuffs[m_FrameIdx], m_PipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(m_PushConstantData), &m_PushConstantData);
+            vkCmdBindDescriptorSets(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_BIND_POINT_COMPUTE, m_PipelineLayout, 0, 1, &m_Sets[m_FrameIdx], 0, nullptr);
+
+            u32 groupX = (m_StorageImages[m_FrameIdx].width + localSizeX - 1) / localSizeX;
+            u32 groupY = (m_StorageImages[m_FrameIdx].height + localSizeY - 1) / localSizeY;
+
+            vkCmdDispatch(m_ComputeCmdBuffs[m_FrameIdx], groupX, groupY, 1);
+        }
+        
+        // ImGui
+        {
+            ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoMove;
+            ImGui::Begin("Main scene", nullptr, flags);
+            
+            ImGui::Image((ImTextureID)m_IgSets[m_FrameIdx], ImGui::GetContentRegionAvail(), ImVec2(0, 1), ImVec2(1, 0));
+
+            ImGui::End();
         }
         
         EndFrame();
@@ -382,10 +678,12 @@ bool RayTracer::StartFrame()
     
     VK_CHECK(vkResetFences(m_Device, 1, &m_InFlightFences[m_FrameIdx]));
     VK_CHECK(vkResetCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx], 0));
+    VK_CHECK(vkResetCommandBuffer(m_ComputeCmdBuffs[m_FrameIdx], 0));
     {
         VkCommandBufferBeginInfo info{};
         info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         VK_CHECK(vkBeginCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx], &info));
+        VK_CHECK(vkBeginCommandBuffer(m_ComputeCmdBuffs[m_FrameIdx], &info));
     }
 
     VkClearValue clearColor = {};
@@ -406,7 +704,36 @@ bool RayTracer::StartFrame()
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
-    ImGui::DockSpaceOverViewport(ImGui::GetID("Dockspace"), ImGui::GetMainViewport());
+    // Dockspace
+    ImGuiWindowFlags window_flags =
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoNavFocus;
+
+    ImGuiDockNodeFlags dockspace_flags =
+        ImGuiDockNodeFlags_PassthruCentralNode;
+
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+    ImGui::Begin("DockSpaceWindow", nullptr, window_flags);
+    ImGui::DockSpace(ImGui::GetID("MainDockSpace"), ImVec2(0.0f, 0.0f), dockspace_flags);    
+    ImGui::End();
+
+    ImGui::PopStyleVar(2);
+    
+    ImGui::SetNextWindowDockID(ImGui::GetID("MainDockSpace"), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
 
     return true;
 }
@@ -422,19 +749,26 @@ void RayTracer::EndFrame()
 
     vkCmdEndRenderPass(m_GraphicsCmdBuffs[m_FrameIdx]);
     VK_CHECK(vkEndCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx]));
+    VK_CHECK(vkEndCommandBuffer(m_ComputeCmdBuffs[m_FrameIdx]));
 
     VkPipelineStageFlags waitStages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
-
+    
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &m_GraphicsCmdBuffs[m_FrameIdx];
+    submitInfo.pCommandBuffers = &m_ComputeCmdBuffs[m_FrameIdx];
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &m_ImageAvailable[m_FrameIdx];
     submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &m_ImageAvailable[m_FrameIdx];
+    submitInfo.pSignalSemaphores = &m_ComputeFinished[m_FrameIdx];
+
+    VK_CHECK(vkQueueSubmit(m_ComputeQueue, 1, &submitInfo, nullptr));
+    
+    submitInfo.pCommandBuffers = &m_GraphicsCmdBuffs[m_FrameIdx];
+    submitInfo.pWaitSemaphores = &m_ComputeFinished[m_FrameIdx];
     submitInfo.pSignalSemaphores = &m_RenderFinished[m_ImageIdx];
     
     VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_FrameIdx]));
@@ -509,8 +843,8 @@ ScCaps RayTracer::GetScCaps()
 
             caps.extent.width = width;
             caps.extent.height = height;
-            caps.extent.width = glm::clamp(caps.extent.width, caps.caps.minImageExtent.width, caps.caps.maxImageExtent.width);
-            caps.extent.height = glm::clamp(caps.extent.height, caps.caps.minImageExtent.height, caps.caps.maxImageExtent.height);
+            caps.extent.width = CLAMP(caps.extent.width, caps.caps.minImageExtent.width, caps.caps.maxImageExtent.width);
+            caps.extent.height = CLAMP(caps.extent.height, caps.caps.minImageExtent.height, caps.caps.maxImageExtent.height);
         }
     }
 
@@ -627,6 +961,14 @@ void RayTracer::Resize()
 
     VK_CHECK(vkDeviceWaitIdle(m_Device));
 
+    for(auto& image : m_StorageImages) 
+    {
+        vkDestroySampler(m_Device, image.sampler, nullptr);
+        vkDestroyImageView(m_Device, image.view, nullptr);
+        vkDestroyImage(m_Device, image.image, nullptr);
+        vkFreeMemory(m_Device, image.memory, nullptr);
+    }
+
     for(auto& fb : m_Framebuffers)
         vkDestroyFramebuffer(m_Device, fb, nullptr);
     for(auto& view : m_ScImageViews)
@@ -635,6 +977,8 @@ void RayTracer::Resize()
         vkDestroySemaphore(m_Device, sema, nullptr);
     for(auto& sema : m_ImageAvailable)
         vkDestroySemaphore(m_Device, sema, nullptr);
+    for(auto& set : m_IgSets)
+        ImGui_ImplVulkan_RemoveTexture(set);
 
     vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
     m_ScImages.clear();
@@ -642,15 +986,144 @@ void RayTracer::Resize()
     m_Framebuffers.clear();
     m_RenderFinished.clear();
 
-    m_ScCaps = GetScCaps();
-    CreateSwapchain();
-
     VkSemaphoreCreateInfo semaInfo{};
     semaInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    m_ScCaps = GetScCaps();
+    CreateSwapchain();
 
     m_RenderFinished.resize(m_ScImages.size());
     for(auto& sema : m_RenderFinished)
         VK_CHECK(vkCreateSemaphore(m_Device, &semaInfo, nullptr, &sema));
     for(auto& sema : m_ImageAvailable)
         VK_CHECK(vkCreateSemaphore(m_Device, &semaInfo, nullptr, &sema));
+
+    for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        m_StorageImages[i].width = width;
+        m_StorageImages[i].height = height;
+
+        {
+            VkImageCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+            info.arrayLayers = 1;
+            info.extent = { m_StorageImages[i].width, m_StorageImages[i].height, 1 };
+            info.format = VK_FORMAT_R8G8B8A8_UNORM;
+            info.imageType = VK_IMAGE_TYPE_2D;
+            info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            info.mipLevels = 1;
+            info.sharingMode = m_UniqueQueues.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
+            info.queueFamilyIndexCount = m_UniqueQueues.size();
+            info.pQueueFamilyIndices = m_UniqueQueues.data();
+            info.samples = VK_SAMPLE_COUNT_1_BIT;
+            info.tiling = VK_IMAGE_TILING_OPTIMAL;
+            info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+
+            VK_CHECK(vkCreateImage(m_Device, &info, nullptr, &m_StorageImages[i].image));
+        }
+        {
+            VkMemoryRequirements req = {};
+            vkGetImageMemoryRequirements(m_Device, m_StorageImages[i].image, &req);
+
+            VkMemoryAllocateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            info.allocationSize = req.size;
+            info.memoryTypeIndex = FindMemoryType(m_PhysicalDevice, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+            VK_CHECK(vkAllocateMemory(m_Device, &info, nullptr, &m_StorageImages[i].memory));
+            VK_CHECK(vkBindImageMemory(m_Device, m_StorageImages[i].image, m_StorageImages[i].memory, 0));
+        }
+        {
+            VkImageViewCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            info.components = { VK_COMPONENT_SWIZZLE_IDENTITY };
+            info.format = VK_FORMAT_R8G8B8A8_UNORM;
+            info.image = m_StorageImages[i].image;
+            info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            info.subresourceRange.baseArrayLayer = 0;
+            info.subresourceRange.baseMipLevel = 0;
+            info.subresourceRange.levelCount = 1;
+            info.subresourceRange.layerCount = 1;
+
+            VK_CHECK(vkCreateImageView(m_Device, &info, nullptr, &m_StorageImages[i].view));
+        }
+        {
+            VkSamplerCreateInfo info = {};
+            info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            info.anisotropyEnable = VK_FALSE;
+            info.magFilter = VK_FILTER_LINEAR;
+            info.minFilter = VK_FILTER_LINEAR;
+            info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+            info.compareEnable = VK_FALSE;
+            info.compareOp = VK_COMPARE_OP_ALWAYS;
+            info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            info.mipLodBias = 0.0f;
+            info.minLod = 0.0f;
+            info.maxLod = 0.0f;
+
+            VK_CHECK(vkCreateSampler(m_Device, &info, nullptr, &m_StorageImages[i].sampler));
+        }
+
+        {
+            VkFence fence = nullptr;
+            {
+                VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+                VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
+            }
+
+            VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+            vkBeginCommandBuffer(m_GraphicsCmdBuffs[i], &beginInfo);
+
+            VkImageMemoryBarrier barrier = {};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+            barrier.image = m_StorageImages[i].image;
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrier.subresourceRange.layerCount = 1;
+            barrier.subresourceRange.levelCount = 1;
+            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+            vkCmdPipelineBarrier(m_GraphicsCmdBuffs[i], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                    0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+            vkEndCommandBuffer(m_GraphicsCmdBuffs[i]);
+
+            VkSubmitInfo info = {}; 
+            info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            info.commandBufferCount = 1;
+            info.pCommandBuffers = &m_GraphicsCmdBuffs[i];
+
+            VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &info, fence));
+            VK_CHECK(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX));
+
+            vkResetCommandBuffer(m_GraphicsCmdBuffs[i], 0);
+            vkDestroyFence(m_Device, fence, nullptr);
+        }
+        {
+            VkDescriptorImageInfo imgInfo = {};
+            imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imgInfo.imageView = m_StorageImages[i].view;
+            imgInfo.sampler = m_StorageImages[i].sampler;
+
+            VkWriteDescriptorSet write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            write.dstSet = m_Sets[i];
+            write.pImageInfo = &imgInfo;
+            write.dstBinding = 0;
+
+            vkUpdateDescriptorSets(m_Device, 1, &write, 0, nullptr);
+        }
+
+        // ImGui sets
+        m_IgSets[i] = ImGui_ImplVulkan_AddTexture(m_StorageImages[i].sampler, m_StorageImages[i].view, VK_IMAGE_LAYOUT_GENERAL);
+    }
 }
