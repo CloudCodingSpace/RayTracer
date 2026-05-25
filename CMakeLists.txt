@@ -40,3 +40,34 @@ target_link_libraries(${PROJECT_NAME} PRIVATE imgui glfw stb glad tinyobj Vulkan
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/libs/glm)
+
+# Shaders
+find_program(GLSLC glslc REQUIRED)
+
+file(GLOB SHADERS
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders/*.comp"
+)
+
+set(SPIRV_BINARY_FILES "")
+
+foreach(SHADER ${SHADERS})
+    get_filename_component(SRC_FILE_NAME ${SHADER} ABSOLUTE)
+    get_filename_component(FILE_NAME ${SHADER} NAME)
+    set(SPIRV "${CMAKE_BINARY_DIR}/assets/shaders/${FILE_NAME}.spv")
+
+    add_custom_command(
+        OUTPUT ${SPIRV}
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+                "${CMAKE_BINARY_DIR}/assets/shaders"
+
+        COMMAND ${GLSLC} ${SHADER} -o ${SPIRV}
+
+        DEPENDS ${SHADER}
+        COMMENT "Compiling shader ${SRC_FILE_NAME} to ${SPIRV}"
+    )
+
+    list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+
+endforeach()
+
+add_custom_target(Shaders ALL DEPENDS ${SPIRV_BINARY_FILES})
