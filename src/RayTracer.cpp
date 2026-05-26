@@ -547,7 +547,7 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
         ImGui_ImplVulkan_InitInfo info{};
         info.Subpass = 0;
         info.Allocator = nullptr;
-        info.ApiVersion = VK_API_VERSION_1_0;
+        info.ApiVersion = VK_API_VERSION_1_2;
         info.DescriptorPool = m_UiDescPool;
         info.Device = m_Device;
         info.ImageCount = FRAMES_IN_FLIGHT;

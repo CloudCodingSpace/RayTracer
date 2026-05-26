@@ -9,7 +9,7 @@ This project is currently going through a rewrite. The earlier version used Open
  - Git (for version control)
  - A modern C++ compiler
  - VulkanSDK installed with shader compilers like `glslc`
- - A GPU supporting Vulkan 1.0 in minimum
+ - A GPU supporting Vulkan 1.2 in minimum and supporting the scalar block layout feature
 
 ## Build instruction
 
