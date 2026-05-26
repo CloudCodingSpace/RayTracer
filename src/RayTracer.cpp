@@ -107,7 +107,14 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
                 if(present)
                     pIdx = i;
                 
-                if(present && (gIdx != -1) && (pIdx != -1) && (cIdx != -1)) {
+                VkPhysicalDeviceScalarBlockLayoutFeatures scalarFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES };
+                VkPhysicalDeviceFeatures2 features = {};
+                features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features.pNext = &scalarFeatures;
+
+                vkGetPhysicalDeviceFeatures2(device, &features);
+
+                if(present && (gIdx != -1) && (pIdx != -1) && (cIdx != -1) && scalarFeatures.scalarBlockLayout) {
                     m_PhysicalDevice = device;
                     m_GraphicsQueueIdx = gIdx;
                     m_PresentQueueIdx = pIdx;
@@ -176,8 +183,13 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
             queueInfos.push_back(info);
         }
 
+        VkPhysicalDeviceScalarBlockLayoutFeatures scalarFeatures = {};
+        scalarFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
+        scalarFeatures.scalarBlockLayout = VK_TRUE;
+
         VkDeviceCreateInfo info = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .pNext = &scalarFeatures,
             .queueCreateInfoCount = (u32)queueInfos.size(),
             .pQueueCreateInfos = queueInfos.data(),
             .enabledExtensionCount = (u32)exts.size(),
