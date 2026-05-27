@@ -7,6 +7,10 @@
 #include <vector>
 #include <set>
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_vulkan.h>
+
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint8_t u8;
@@ -37,6 +41,7 @@ private:
     ScCaps GetScCaps();
     void CreateSwapchain();
     void Resize();
+    void ResizeImages(u32 width, u32 height);
 
 private:
     struct {
@@ -90,4 +95,6 @@ private:
 
     u32 m_ImageIdx = 0;
     u32 m_FrameIdx = 0;
+    bool m_ResizeImages = false;
+    ImVec2 m_SceneSize = ImVec2(0, 0);
 };

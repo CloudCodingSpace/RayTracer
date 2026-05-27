@@ -6,10 +6,6 @@
 #include <algorithm>
 #include <vector>
 
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_vulkan.h>
-
 #include <vulkan/vk_enum_string_helper.h>
 
 #define VK_CHECK(result) do { if(result != VK_SUCCESS) { printf("VkResult: %s (line: %d, file: %s\n", string_VkResult(result), __LINE__, __FILE__); assert(false); } } while(0);
@@ -627,14 +623,19 @@ void RayTracer::Run()
     glfwShowWindow(m_Window);
     while(!glfwWindowShouldClose(m_Window))
     {
+        if(m_ResizeImages) {
+            ResizeImages(m_SceneSize.x, m_SceneSize.y);
+            m_ResizeImages = false;
+        }
+
         glfwGetFramebufferSize(m_Window, &m_Width, &m_Height);
         if(!StartFrame())
             continue;
         
         // Draw commands
         {
-            m_PushConstantData.resolution[0] = m_StorageImages[0].width;
-            m_PushConstantData.resolution[1] = m_StorageImages[0].height;
+            m_PushConstantData.resolution[0] = m_StorageImages[m_FrameIdx].width;
+            m_PushConstantData.resolution[1] = m_StorageImages[m_FrameIdx].height;
 
             const int localSizeX = 16;
             const int localSizeY = 16;
@@ -648,17 +649,42 @@ void RayTracer::Run()
 
             vkCmdDispatch(m_ComputeCmdBuffs[m_FrameIdx], groupX, groupY, 1);
         }
-        
+
+        // Memory
+        {
+            VkImageMemoryBarrier barrier{};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+
+            barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+            barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+            barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+            barrier.image = m_StorageImages[m_FrameIdx].image;
+
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.levelCount = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount = 1;
+
+            vkCmdPipelineBarrier(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+        }
+
         // ImGui
         {
-            ImGuiWindowFlags flags =
-                ImGuiWindowFlags_NoTitleBar |
-                ImGuiWindowFlags_NoCollapse |
-                ImGuiWindowFlags_NoResize |
-                ImGuiWindowFlags_NoMove;
-            ImGui::Begin("Main scene", nullptr, flags);
+            ImGui::Begin("Scene");
+            ImVec2 res = ImGui::GetContentRegionAvail();
+            if((m_StorageImages[m_FrameIdx].width != res.x || m_StorageImages[m_FrameIdx].height != res.y) && res.x != 0 && res.y != 0) {
+                m_SceneSize = res;
+                m_ResizeImages = true;
+            }
             
-            ImGui::Image((ImTextureID)m_IgSets[m_FrameIdx], ImGui::GetContentRegionAvail(), ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::Image((ImTextureID)m_IgSets[m_FrameIdx], res, ImVec2(0, 1), ImVec2(1, 0));
 
             ImGui::End();
         }
@@ -716,36 +742,7 @@ bool RayTracer::StartFrame()
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
-    // Dockspace
-    ImGuiWindowFlags window_flags =
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoBringToFrontOnFocus |
-        ImGuiWindowFlags_NoNavFocus;
-
-    ImGuiDockNodeFlags dockspace_flags =
-        ImGuiDockNodeFlags_PassthruCentralNode;
-
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
-    ImGui::SetNextWindowViewport(viewport->ID);
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-
-    ImGui::Begin("DockSpaceWindow", nullptr, window_flags);
-    ImGui::DockSpace(ImGui::GetID("MainDockSpace"), ImVec2(0.0f, 0.0f), dockspace_flags);    
-    ImGui::End();
-
-    ImGui::PopStyleVar(2);
-    
-    ImGui::SetNextWindowDockID(ImGui::GetID("MainDockSpace"), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::DockSpaceOverViewport(ImGui::GetID("Dockspace"), ImGui::GetMainViewport());
 
     return true;
 }
@@ -973,14 +970,6 @@ void RayTracer::Resize()
 
     VK_CHECK(vkDeviceWaitIdle(m_Device));
 
-    for(auto& image : m_StorageImages) 
-    {
-        vkDestroySampler(m_Device, image.sampler, nullptr);
-        vkDestroyImageView(m_Device, image.view, nullptr);
-        vkDestroyImage(m_Device, image.image, nullptr);
-        vkFreeMemory(m_Device, image.memory, nullptr);
-    }
-
     for(auto& fb : m_Framebuffers)
         vkDestroyFramebuffer(m_Device, fb, nullptr);
     for(auto& view : m_ScImageViews)
@@ -989,8 +978,6 @@ void RayTracer::Resize()
         vkDestroySemaphore(m_Device, sema, nullptr);
     for(auto& sema : m_ImageAvailable)
         vkDestroySemaphore(m_Device, sema, nullptr);
-    for(auto& set : m_IgSets)
-        ImGui_ImplVulkan_RemoveTexture(set);
 
     vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
     m_ScImages.clear();
@@ -1009,7 +996,43 @@ void RayTracer::Resize()
         VK_CHECK(vkCreateSemaphore(m_Device, &semaInfo, nullptr, &sema));
     for(auto& sema : m_ImageAvailable)
         VK_CHECK(vkCreateSemaphore(m_Device, &semaInfo, nullptr, &sema));
+}
 
+void RayTracer::ResizeImages(u32 width, u32 height)
+{
+    VK_CHECK(vkDeviceWaitIdle(m_Device));
+
+    for(auto& image : m_StorageImages) 
+    {
+        vkDestroySampler(m_Device, image.sampler, nullptr);
+        vkDestroyImageView(m_Device, image.view, nullptr);
+        vkDestroyImage(m_Device, image.image, nullptr);
+        vkFreeMemory(m_Device, image.memory, nullptr);
+    }
+
+    for(auto& set : m_IgSets)
+        ImGui_ImplVulkan_RemoveTexture(set);
+
+    VkCommandBuffer buff = nullptr;
+    {
+        VkCommandBufferAllocateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        info.commandBufferCount = 1;
+        info.commandPool = m_GraphicsCmdPool;
+        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        VK_CHECK(vkAllocateCommandBuffers(m_Device, &info, &buff));
+    }
+
+    VkFence fence = nullptr;
+    {
+        VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+        VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
+    }
+
+    VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    vkBeginCommandBuffer(buff, &beginInfo);
+
+    // Creation
     for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++)
     {
         m_StorageImages[i].width = width;
@@ -1081,15 +1104,6 @@ void RayTracer::Resize()
         }
 
         {
-            VkFence fence = nullptr;
-            {
-                VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-                VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
-            }
-
-            VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-            vkBeginCommandBuffer(m_GraphicsCmdBuffs[i], &beginInfo);
-
             VkImageMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1102,21 +1116,8 @@ void RayTracer::Resize()
             barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-            vkCmdPipelineBarrier(m_GraphicsCmdBuffs[i], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            vkCmdPipelineBarrier(buff, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                     0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-            vkEndCommandBuffer(m_GraphicsCmdBuffs[i]);
-
-            VkSubmitInfo info = {}; 
-            info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            info.commandBufferCount = 1;
-            info.pCommandBuffers = &m_GraphicsCmdBuffs[i];
-
-            VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &info, fence));
-            VK_CHECK(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX));
-
-            vkResetCommandBuffer(m_GraphicsCmdBuffs[i], 0);
-            vkDestroyFence(m_Device, fence, nullptr);
         }
         {
             VkDescriptorImageInfo imgInfo = {};
@@ -1138,4 +1139,17 @@ void RayTracer::Resize()
         // ImGui sets
         m_IgSets[i] = ImGui_ImplVulkan_AddTexture(m_StorageImages[i].sampler, m_StorageImages[i].view, VK_IMAGE_LAYOUT_GENERAL);
     }
+
+    vkEndCommandBuffer(buff);
+
+    VkSubmitInfo info = {}; 
+    info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    info.commandBufferCount = 1;
+    info.pCommandBuffers = &buff;
+
+    VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &info, fence));
+    VK_CHECK(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX));
+
+    vkDestroyFence(m_Device, fence, nullptr);
+    vkFreeCommandBuffers(m_Device, m_GraphicsCmdPool, 1, &buff);
 }
