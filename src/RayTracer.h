@@ -97,4 +97,5 @@ private:
     u32 m_FrameIdx = 0;
     bool m_ResizeImages = false;
     ImVec2 m_SceneSize = ImVec2(0, 0);
+    double m_DeltaTime = 0, m_LastTime = 0, m_DeltaAccum = 0, m_DisplayedDelta = 0;
 };

@@ -623,6 +623,20 @@ void RayTracer::Run()
     glfwShowWindow(m_Window);
     while(!glfwWindowShouldClose(m_Window))
     {
+        // Delta time
+        {
+            double currentTime = glfwGetTime();
+            m_DeltaTime = currentTime - m_LastTime;
+            m_LastTime = currentTime;
+
+            m_DeltaAccum += m_DeltaTime;
+            if(m_DeltaAccum >= 0.2)
+            {
+                m_DisplayedDelta = m_DeltaTime * 1000;
+                m_DeltaAccum = 0;
+            }
+        }
+
         if(m_ResizeImages) {
             ResizeImages(m_SceneSize.x, m_SceneSize.y);
             m_ResizeImages = false;
@@ -686,6 +700,11 @@ void RayTracer::Run()
             
             ImGui::Image((ImTextureID)m_IgSets[m_FrameIdx], res, ImVec2(0, 1), ImVec2(1, 0));
 
+            ImGui::End();
+
+            ImGui::Begin("Settings");
+            ImGui::TextColored(ImVec4(0, 255, 0, 255), "Delta Time: %.2fms", m_DisplayedDelta);
+            ImGui::TextColored(ImVec4(0, 255, 0, 255), "Frame time: %.2f Hz", 1000/m_DisplayedDelta);
             ImGui::End();
         }
         
