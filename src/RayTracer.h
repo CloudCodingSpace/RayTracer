@@ -107,6 +107,11 @@ private:
     void CreateImage(Image& image, const ImageInfo& info);
     void DestroyImage(Image& image);
 
+    VkFence CreateFence();
+    VkCommandBuffer AllocateCommandBuffer(VkCommandPool pool);
+    void FreeCommandBuffer(VkCommandBuffer buffer, VkCommandPool pool);
+    void BeginCommandBuffer(VkCommandBuffer buffer, VkCommandBufferUsageFlagBits usage);
+
 private:
     struct {
         float resolution[2];
@@ -149,13 +154,7 @@ private:
     VkDescriptorSet m_Sets[FRAMES_IN_FLIGHT] = {};
     VkDescriptorSet m_IgSets[FRAMES_IN_FLIGHT] = {};
 
-    struct {
-        VkImage image = nullptr;
-        VkDeviceMemory memory = nullptr;
-        VkImageView view = nullptr;
-        VkSampler sampler = nullptr;
-        u32 width = 800, height = 600;
-    } m_StorageImages[FRAMES_IN_FLIGHT];
+    Image m_StorageImages[FRAMES_IN_FLIGHT];
 
     u32 m_ImageIdx = 0;
     u32 m_FrameIdx = 0;

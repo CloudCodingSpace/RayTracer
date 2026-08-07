@@ -260,15 +260,8 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
         {
             for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) 
             {
-                VkCommandBufferAllocateInfo info{};
-                info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-                info.commandBufferCount = 1;
-                info.commandPool = m_GraphicsCmdPool;
-                info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                
-                VK_CHECK(vkAllocateCommandBuffers(m_Device, &info, &m_GraphicsCmdBuffs[i]));
-                info.commandPool = m_ComputeCmdPool;
-                VK_CHECK(vkAllocateCommandBuffers(m_Device, &info, &m_ComputeCmdBuffs[i]));
+                m_GraphicsCmdBuffs[i] = AllocateCommandBuffer(m_GraphicsCmdPool);
+                m_ComputeCmdBuffs[i] = AllocateCommandBuffer(m_ComputeCmdPool);
             }
         }
     }
@@ -296,83 +289,25 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
     }
     // Storage images
     {
+        VkFence fence = CreateFence();
+
+        BeginCommandBuffer(m_GraphicsCmdBuffs[0], VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        constexpr u32 width = 800, height = 600;
         for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++)
         {
-            {
-                VkImageCreateInfo info = {};
-                info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-                info.arrayLayers = 1;
-                info.extent = { m_StorageImages[i].width, m_StorageImages[i].height, 1 };
-                info.format = VK_FORMAT_R8G8B8A8_UNORM;
-                info.imageType = VK_IMAGE_TYPE_2D;
-                info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                info.mipLevels = 1;
-                info.sharingMode = m_UniqueQueues.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
-                info.queueFamilyIndexCount = m_UniqueQueues.size();
-                info.pQueueFamilyIndices = m_UniqueQueues.data();
-                info.samples = VK_SAMPLE_COUNT_1_BIT;
-                info.tiling = VK_IMAGE_TILING_OPTIMAL;
-                info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+            ImageInfo imgInfo{};
+            imgInfo.width = width;
+            imgInfo.height = height;
+            imgInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+            imgInfo.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+            imgInfo.gpuResource = true;
+            imgInfo.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            imgInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-                VK_CHECK(vkCreateImage(m_Device, &info, nullptr, &m_StorageImages[i].image));
-            }
-            {
-                VkMemoryRequirements req = {};
-                vkGetImageMemoryRequirements(m_Device, m_StorageImages[i].image, &req);
-
-                VkMemoryAllocateInfo info = {};
-                info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-                info.allocationSize = req.size;
-                info.memoryTypeIndex = FindMemoryType(m_PhysicalDevice, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-                VK_CHECK(vkAllocateMemory(m_Device, &info, nullptr, &m_StorageImages[i].memory));
-                VK_CHECK(vkBindImageMemory(m_Device, m_StorageImages[i].image, m_StorageImages[i].memory, 0));
-            }
-            {
-                VkImageViewCreateInfo info = {};
-                info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                info.components = { VK_COMPONENT_SWIZZLE_IDENTITY };
-                info.format = VK_FORMAT_R8G8B8A8_UNORM;
-                info.image = m_StorageImages[i].image;
-                info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-                info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                info.subresourceRange.baseArrayLayer = 0;
-                info.subresourceRange.baseMipLevel = 0;
-                info.subresourceRange.levelCount = 1;
-                info.subresourceRange.layerCount = 1;
-
-                VK_CHECK(vkCreateImageView(m_Device, &info, nullptr, &m_StorageImages[i].view));
-            }
-            {
-                VkSamplerCreateInfo info = {};
-                info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-                info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-                info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-                info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-                info.anisotropyEnable = VK_FALSE;
-                info.magFilter = VK_FILTER_LINEAR;
-                info.minFilter = VK_FILTER_LINEAR;
-                info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-                info.compareEnable = VK_FALSE;
-                info.compareOp = VK_COMPARE_OP_ALWAYS;
-                info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                info.mipLodBias = 0.0f;
-                info.minLod = 0.0f;
-                info.maxLod = 0.0f;
-
-                VK_CHECK(vkCreateSampler(m_Device, &info, nullptr, &m_StorageImages[i].sampler));
-            }
+            CreateImage(m_StorageImages[i], imgInfo);
 
             {
-                VkFence fence = nullptr;
-                {
-                    VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-                    VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
-                }
-
-                VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-                vkBeginCommandBuffer(m_GraphicsCmdBuffs[i], &beginInfo);
-
                 VkImageMemoryBarrier barrier = {};
                 barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
                 barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -385,23 +320,23 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
                 barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                 barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-                vkCmdPipelineBarrier(m_GraphicsCmdBuffs[i], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                vkCmdPipelineBarrier(m_GraphicsCmdBuffs[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                         0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-                vkEndCommandBuffer(m_GraphicsCmdBuffs[i]);
-
-                VkSubmitInfo info = {}; 
-                info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-                info.commandBufferCount = 1;
-                info.pCommandBuffers = &m_GraphicsCmdBuffs[i];
-
-                VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &info, fence));
-                VK_CHECK(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX));
-
-                vkResetCommandBuffer(m_GraphicsCmdBuffs[i], 0);
-                vkDestroyFence(m_Device, fence, nullptr);
             }
         }
+
+        vkEndCommandBuffer(m_GraphicsCmdBuffs[0]);
+
+        VkSubmitInfo info = {}; 
+        info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        info.commandBufferCount = 1;
+        info.pCommandBuffers = &m_GraphicsCmdBuffs[0];
+
+        VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &info, fence));
+        VK_CHECK(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX));
+
+        vkResetCommandBuffer(m_GraphicsCmdBuffs[0], 0);
+        vkDestroyFence(m_Device, fence, nullptr);
     }
     // Descriptors
     {
@@ -636,12 +571,7 @@ RayTracer::~RayTracer()
     vkDestroyDescriptorPool(m_Device, m_UiDescPool, nullptr);
 
     for(auto& image : m_StorageImages) 
-    {
-        vkDestroySampler(m_Device, image.sampler, nullptr);
-        vkDestroyImageView(m_Device, image.view, nullptr);
-        vkDestroyImage(m_Device, image.image, nullptr);
-        vkFreeMemory(m_Device, image.memory, nullptr);
-    }
+        DestroyImage(image); 
 
     for(auto& fence : m_InFlightFences)
         vkDestroyFence(m_Device, fence, nullptr);
@@ -701,8 +631,8 @@ void RayTracer::Run()
         
         // Draw commands
         {
-            m_PushConstantData.resolution[0] = m_StorageImages[m_FrameIdx].width;
-            m_PushConstantData.resolution[1] = m_StorageImages[m_FrameIdx].height;
+            m_PushConstantData.resolution[0] = m_StorageImages[m_FrameIdx].info.width;
+            m_PushConstantData.resolution[1] = m_StorageImages[m_FrameIdx].info.height;
 
             const int localSizeX = 16;
             const int localSizeY = 16;
@@ -711,8 +641,8 @@ void RayTracer::Run()
             vkCmdPushConstants(m_ComputeCmdBuffs[m_FrameIdx], m_PipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(m_PushConstantData), &m_PushConstantData);
             vkCmdBindDescriptorSets(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_BIND_POINT_COMPUTE, m_PipelineLayout, 0, 1, &m_Sets[m_FrameIdx], 0, nullptr);
 
-            u32 groupX = (m_StorageImages[m_FrameIdx].width + localSizeX - 1) / localSizeX;
-            u32 groupY = (m_StorageImages[m_FrameIdx].height + localSizeY - 1) / localSizeY;
+            u32 groupX = (m_StorageImages[m_FrameIdx].info.width + localSizeX - 1) / localSizeX;
+            u32 groupY = (m_StorageImages[m_FrameIdx].info.height + localSizeY - 1) / localSizeY;
 
             vkCmdDispatch(m_ComputeCmdBuffs[m_FrameIdx], groupX, groupY, 1);
         }
@@ -746,7 +676,7 @@ void RayTracer::Run()
         {
             ImGui::Begin("Scene");
             ImVec2 res = ImGui::GetContentRegionAvail();
-            if((m_StorageImages[m_FrameIdx].width != res.x || m_StorageImages[m_FrameIdx].height != res.y) && res.x != 0 && res.y != 0) {
+            if((m_StorageImages[m_FrameIdx].info.width != res.x || m_StorageImages[m_FrameIdx].info.height != res.y) && res.x != 0 && res.y != 0) {
                 m_SceneSize = res;
                 m_ResizeImages = true;
             }
@@ -789,12 +719,9 @@ bool RayTracer::StartFrame()
     VK_CHECK(vkResetFences(m_Device, 1, &m_InFlightFences[m_FrameIdx]));
     VK_CHECK(vkResetCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx], 0));
     VK_CHECK(vkResetCommandBuffer(m_ComputeCmdBuffs[m_FrameIdx], 0));
-    {
-        VkCommandBufferBeginInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        VK_CHECK(vkBeginCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx], &info));
-        VK_CHECK(vkBeginCommandBuffer(m_ComputeCmdBuffs[m_FrameIdx], &info));
-    }
+
+    BeginCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx], VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    BeginCommandBuffer(m_ComputeCmdBuffs[m_FrameIdx], VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VkClearValue clearColor = {};
     clearColor.color = {0.1f, 0.1f, 0.1f, 1.0f};
@@ -1074,106 +1001,31 @@ void RayTracer::ResizeImages(u32 width, u32 height)
 {
     VK_CHECK(vkDeviceWaitIdle(m_Device));
 
-    for(auto& image : m_StorageImages) 
-    {
-        vkDestroySampler(m_Device, image.sampler, nullptr);
-        vkDestroyImageView(m_Device, image.view, nullptr);
-        vkDestroyImage(m_Device, image.image, nullptr);
-        vkFreeMemory(m_Device, image.memory, nullptr);
-    }
+    for(auto& image : m_StorageImages)
+        DestroyImage(image);
 
     for(auto& set : m_IgSets)
         ImGui_ImplVulkan_RemoveTexture(set);
 
-    VkCommandBuffer buff = nullptr;
-    {
-        VkCommandBufferAllocateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        info.commandBufferCount = 1;
-        info.commandPool = m_GraphicsCmdPool;
-        info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        VK_CHECK(vkAllocateCommandBuffers(m_Device, &info, &buff));
-    }
+    VkCommandBuffer buff = AllocateCommandBuffer(m_GraphicsCmdPool);
 
-    VkFence fence = nullptr;
-    {
-        VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-        VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
-    }
+    VkFence fence = CreateFence();
 
-    VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    vkBeginCommandBuffer(buff, &beginInfo);
+    BeginCommandBuffer(buff, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     // Creation
     for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++)
     {
-        m_StorageImages[i].width = width;
-        m_StorageImages[i].height = height;
+        ImageInfo imgInfo{};
+        imgInfo.width = width;
+        imgInfo.height = height;
+        imgInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+        imgInfo.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+        imgInfo.gpuResource = true;
+        imgInfo.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        imgInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-        {
-            VkImageCreateInfo info = {};
-            info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-            info.arrayLayers = 1;
-            info.extent = { m_StorageImages[i].width, m_StorageImages[i].height, 1 };
-            info.format = VK_FORMAT_R8G8B8A8_UNORM;
-            info.imageType = VK_IMAGE_TYPE_2D;
-            info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            info.mipLevels = 1;
-            info.sharingMode = m_UniqueQueues.size() == 1 ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT;
-            info.queueFamilyIndexCount = m_UniqueQueues.size();
-            info.pQueueFamilyIndices = m_UniqueQueues.data();
-            info.samples = VK_SAMPLE_COUNT_1_BIT;
-            info.tiling = VK_IMAGE_TILING_OPTIMAL;
-            info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-
-            VK_CHECK(vkCreateImage(m_Device, &info, nullptr, &m_StorageImages[i].image));
-        }
-        {
-            VkMemoryRequirements req = {};
-            vkGetImageMemoryRequirements(m_Device, m_StorageImages[i].image, &req);
-
-            VkMemoryAllocateInfo info = {};
-            info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            info.allocationSize = req.size;
-            info.memoryTypeIndex = FindMemoryType(m_PhysicalDevice, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-            VK_CHECK(vkAllocateMemory(m_Device, &info, nullptr, &m_StorageImages[i].memory));
-            VK_CHECK(vkBindImageMemory(m_Device, m_StorageImages[i].image, m_StorageImages[i].memory, 0));
-        }
-        {
-            VkImageViewCreateInfo info = {};
-            info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            info.components = { VK_COMPONENT_SWIZZLE_IDENTITY };
-            info.format = VK_FORMAT_R8G8B8A8_UNORM;
-            info.image = m_StorageImages[i].image;
-            info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            info.subresourceRange.baseArrayLayer = 0;
-            info.subresourceRange.baseMipLevel = 0;
-            info.subresourceRange.levelCount = 1;
-            info.subresourceRange.layerCount = 1;
-
-            VK_CHECK(vkCreateImageView(m_Device, &info, nullptr, &m_StorageImages[i].view));
-        }
-        {
-            VkSamplerCreateInfo info = {};
-            info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            info.anisotropyEnable = VK_FALSE;
-            info.magFilter = VK_FILTER_LINEAR;
-            info.minFilter = VK_FILTER_LINEAR;
-            info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-            info.compareEnable = VK_FALSE;
-            info.compareOp = VK_COMPARE_OP_ALWAYS;
-            info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-            info.mipLodBias = 0.0f;
-            info.minLod = 0.0f;
-            info.maxLod = 0.0f;
-
-            VK_CHECK(vkCreateSampler(m_Device, &info, nullptr, &m_StorageImages[i].sampler));
-        }
+        CreateImage(m_StorageImages[i], imgInfo);
 
         {
             VkImageMemoryBarrier barrier = {};
@@ -1223,7 +1075,7 @@ void RayTracer::ResizeImages(u32 width, u32 height)
     VK_CHECK(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX));
 
     vkDestroyFence(m_Device, fence, nullptr);
-    vkFreeCommandBuffers(m_Device, m_GraphicsCmdPool, 1, &buff);
+    FreeCommandBuffer(buff, m_GraphicsCmdPool);
 }
 
 void RayTracer::Camera::Create(RayTracer* app)
@@ -1385,20 +1237,8 @@ void RayTracer::UploadDataToBuffer(Buffer& buffer, void* data)
     if((buffer.info.usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) != VK_BUFFER_USAGE_TRANSFER_DST_BIT || !buffer.info.size)
         assert(false && "Can't upload to buffer!");
 
-    VkCommandBuffer cmdBuff = nullptr;
-    VkFence fence = nullptr;
-    {
-        VkFenceCreateInfo info{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-        VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
-        
-        VkCommandBufferAllocateInfo cInfo = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = m_GraphicsCmdPool,
-            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1
-        };
-        VK_CHECK(vkAllocateCommandBuffers(m_Device, &cInfo, &cmdBuff));
-    }
+    VkCommandBuffer cmdBuff = AllocateCommandBuffer(m_GraphicsCmdPool);
+    VkFence fence = CreateFence();
 
     BufferInfo buffInfo{};
     buffInfo.size = buffer.info.size;
@@ -1413,14 +1253,8 @@ void RayTracer::UploadDataToBuffer(Buffer& buffer, void* data)
     memcpy(mappedMem, data, buffInfo.size);
     vkUnmapMemory(m_Device, stagingBuffer.memory);
 
-    {
-        VkCommandBufferBeginInfo info = {
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-        };
-        VK_CHECK(vkBeginCommandBuffer(cmdBuff, &info));
-    }
-
+    BeginCommandBuffer(cmdBuff, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    
     VkBufferCopy region{};
     region.size = buffInfo.size;
     region.srcOffset = 0;
@@ -1439,7 +1273,7 @@ void RayTracer::UploadDataToBuffer(Buffer& buffer, void* data)
 
     DestroyBuffer(stagingBuffer);
     vkDestroyFence(m_Device, fence, nullptr);
-    vkFreeCommandBuffers(m_Device, m_GraphicsCmdPool, 1, &cmdBuff);
+    FreeCommandBuffer(cmdBuff, m_GraphicsCmdPool);
 }
 
 void RayTracer::CreateImage(Image& image, const ImageInfo& imgInfo)
@@ -1528,4 +1362,33 @@ void RayTracer::DestroyImage(Image& image)
     vkDestroySampler(m_Device, image.sampler, nullptr);
 
     memset(&image, 0, sizeof(image));
+}
+
+VkFence RayTracer::CreateFence() {
+    VkFence fence = nullptr;
+    VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+    VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
+    return fence;
+}
+
+VkCommandBuffer RayTracer::AllocateCommandBuffer(VkCommandPool pool) {
+    VkCommandBufferAllocateInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+    info.commandBufferCount = 1;
+    info.commandPool = pool;
+    info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    
+    VkCommandBuffer buff = nullptr;
+    VK_CHECK(vkAllocateCommandBuffers(m_Device, &info, &buff));
+    return buff;
+}
+
+void RayTracer::FreeCommandBuffer(VkCommandBuffer buffer, VkCommandPool pool) {
+    vkFreeCommandBuffers(m_Device, pool, 1, &buffer);
+}
+
+void RayTracer::BeginCommandBuffer(VkCommandBuffer buffer, VkCommandBufferUsageFlagBits usage) {
+    VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    info.flags = usage;
+
+    VK_CHECK(vkBeginCommandBuffer(buffer, &info));
 }
