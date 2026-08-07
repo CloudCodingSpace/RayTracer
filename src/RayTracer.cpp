@@ -1225,3 +1225,307 @@ void RayTracer::ResizeImages(u32 width, u32 height)
     vkDestroyFence(m_Device, fence, nullptr);
     vkFreeCommandBuffers(m_Device, m_GraphicsCmdPool, 1, &buff);
 }
+
+void RayTracer::Camera::Create(RayTracer* app)
+{
+    m_Rt = app;
+    m_Pos = glm::vec3(0, 0, 3);
+    m_Front = glm::vec3(0, 0, -1);
+    m_Up = glm::vec3(0, 1, 0);
+    m_Right = glm::normalize(glm::cross(m_Up, m_Front));
+    m_LastX = (float)m_Rt->m_Width / 2;
+    m_LastY = (float)m_Rt->m_Height / 2;
+    
+    if(m_Rt->m_Height == 0)
+        return;
+    m_Proj = glm::perspective(glm::radians(m_Fov), m_Rt->m_Width/(float)m_Rt->m_Height, 0.01f, 1000.0f);
+    m_Proj[1][1] *= -1.0f;
+    m_View = glm::lookAt(m_Pos, m_Pos + m_Front, m_Up);
+}
+
+void RayTracer::Camera::Update()
+{
+    float dt = m_Rt->m_DisplayedDelta;
+    GLFWwindow* window = m_Rt->m_Window;
+    bool moved = false;
+
+    {
+        if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            m_Pos += m_Front * m_Speed * dt;
+            moved = true;
+        }
+        if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            m_Pos -= m_Front * m_Speed * dt;
+            moved = true;
+        }
+        if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            m_Pos -= m_Right * m_Speed * dt;
+            moved = true;
+        }
+        if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            m_Pos += m_Right * m_Speed * dt;
+            moved = true;
+        }
+        if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+            m_Pos -= m_Up * m_Speed * dt;
+            moved = true;
+        }
+        if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+            m_Pos += m_Up * m_Speed * dt;
+            moved = true;
+        }
+    }
+
+    {
+        if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+        {
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+
+            if(m_FirstMouse)
+            {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                m_LastX = xpos;
+                m_LastY = ypos;
+                m_FirstMouse = false;
+            }
+
+            float dtX = xpos - m_LastX;
+            float dtY = m_LastY - ypos;
+
+            m_LastX = xpos;
+            m_LastY = ypos;
+
+            if(dtX != 0 || dtY != 0)
+            {
+                dtX *= m_Sensitivity;
+                dtY *= m_Sensitivity;
+
+                m_Yaw += dtX;
+                m_Pitch += dtY;
+
+                if(m_Pitch > 89.9f)
+                    m_Pitch = 89.9f;
+                else if(m_Pitch < -89.9f)
+                    m_Pitch = -89.9f;
+                
+                glm::vec3 front(0.0f);
+                front.x = glm::cos(glm::radians(m_Yaw)) * glm::cos(glm::radians(m_Pitch));
+                front.y = glm::sin(glm::radians(m_Pitch));
+                front.z = glm::sin(glm::radians(m_Yaw)) * glm::cos(glm::radians(m_Pitch));
+
+                m_Front = front;
+                moved = true;
+            }
+        }
+        else if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE)
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            m_FirstMouse = true;
+        }
+    }
+
+    m_Right = glm::normalize(glm::cross(m_Front, glm::vec3(0, 1, 0)));
+    m_Up = glm::normalize(glm::cross(m_Right, m_Front));
+
+    if(!moved)
+        return;
+    
+    if(m_Rt->m_Height == 0)
+        return;
+
+    
+    m_Proj = glm::perspective(glm::radians(m_Fov), m_Rt->m_Width/(float)m_Rt->m_Height, 0.01f, 1000.0f);
+    m_Proj[1][1] *= -1.0f;
+    m_View = glm::lookAt(m_Pos, m_Pos + m_Front, m_Up);
+}
+
+void RayTracer::CreateBuffer(Buffer& buffer, const BufferInfo& buffInfo)
+{
+    buffer.info = buffInfo;
+
+    {
+        VkBufferCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        info.queueFamilyIndexCount = m_UniqueQueues.size();
+        info.pQueueFamilyIndices = m_UniqueQueues.data();
+        info.sharingMode = m_UniqueQueues.size() > 1 ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
+        info.size = buffInfo.size;
+        info.usage = buffInfo.usage;
+        
+        VK_CHECK(vkCreateBuffer(m_Device, &info, nullptr, &buffer.buffer));
+    }
+    {
+        VkMemoryRequirements req{};
+        vkGetBufferMemoryRequirements(m_Device, buffer.buffer, &req);
+
+        VkMemoryAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        info.memoryTypeIndex = FindMemoryType(m_PhysicalDevice, req.memoryTypeBits, buffInfo.memProps);
+        info.allocationSize = req.size;
+        
+        VK_CHECK(vkAllocateMemory(m_Device, &info, nullptr, &buffer.memory));
+        VK_CHECK(vkBindBufferMemory(m_Device, buffer.buffer, buffer.memory, 0));
+    }
+
+    if(buffInfo.data)
+        UploadDataToBuffer(buffer, buffInfo.data);
+}
+
+void RayTracer::DestroyBuffer(Buffer& buffer)
+{
+    vkDestroyBuffer(m_Device, buffer.buffer, nullptr);
+    vkFreeMemory(m_Device, buffer.memory, nullptr);
+
+    memset(&buffer, 0, sizeof(buffer));
+}
+
+void RayTracer::UploadDataToBuffer(Buffer& buffer, void* data)
+{
+    if((buffer.info.usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) != VK_BUFFER_USAGE_TRANSFER_DST_BIT || !buffer.info.size)
+        assert(false && "Can't upload to buffer!");
+
+    VkCommandBuffer cmdBuff = nullptr;
+    VkFence fence = nullptr;
+    {
+        VkFenceCreateInfo info{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+        VK_CHECK(vkCreateFence(m_Device, &info, nullptr, &fence));
+        
+        VkCommandBufferAllocateInfo cInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = m_GraphicsCmdPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1
+        };
+        VK_CHECK(vkAllocateCommandBuffers(m_Device, &cInfo, &cmdBuff));
+    }
+
+    BufferInfo buffInfo{};
+    buffInfo.size = buffer.info.size;
+    buffInfo.memProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    buffInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+    Buffer stagingBuffer{};
+    CreateBuffer(stagingBuffer, buffInfo);
+
+    void* mappedMem = nullptr;
+    VK_CHECK(vkMapMemory(m_Device, stagingBuffer.memory, 0, buffInfo.size, 0, &mappedMem));
+    memcpy(mappedMem, data, buffInfo.size);
+    vkUnmapMemory(m_Device, stagingBuffer.memory);
+
+    {
+        VkCommandBufferBeginInfo info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+        };
+        VK_CHECK(vkBeginCommandBuffer(cmdBuff, &info));
+    }
+
+    VkBufferCopy region{};
+    region.size = buffInfo.size;
+    region.srcOffset = 0;
+    region.dstOffset = 0;
+    vkCmdCopyBuffer(cmdBuff, stagingBuffer.buffer, buffer.buffer, 1, &region);
+
+    vkEndCommandBuffer(cmdBuff);
+
+    VkSubmitInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    info.commandBufferCount = 1;
+    info.pCommandBuffers = &cmdBuff;
+
+    VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &info, fence));
+    VK_CHECK(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, UINT64_MAX));
+
+    DestroyBuffer(stagingBuffer);
+    vkDestroyFence(m_Device, fence, nullptr);
+    vkFreeCommandBuffers(m_Device, m_GraphicsCmdPool, 1, &cmdBuff);
+}
+
+void RayTracer::CreateImage(Image& image, const ImageInfo& imgInfo)
+{
+    image.info = imgInfo;
+
+    {
+        VkImageCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        info.arrayLayers = 1;
+        info.extent.width = imgInfo.width;
+        info.extent.height = imgInfo.height;
+        info.extent.depth = 1;
+        info.format = imgInfo.format;
+        info.imageType = VK_IMAGE_TYPE_2D;
+        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        info.mipLevels = 1;
+        info.queueFamilyIndexCount = m_UniqueQueues.size();
+        info.pQueueFamilyIndices = m_UniqueQueues.data();
+        info.sharingMode = m_UniqueQueues.size() > 1 ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
+        info.samples = VK_SAMPLE_COUNT_1_BIT;
+        info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        info.usage = imgInfo.usage;
+
+        VK_CHECK(vkCreateImage(m_Device, &info, nullptr, &image.image));
+    }
+    {
+        VkMemoryRequirements memReq{};
+        vkGetImageMemoryRequirements(m_Device, image.image, &memReq);
+
+        VkMemoryAllocateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        info.allocationSize = memReq.size;
+        info.memoryTypeIndex = FindMemoryType(m_PhysicalDevice, memReq.memoryTypeBits, imgInfo.memProps);
+        
+        VK_CHECK(vkAllocateMemory(m_Device, &info, nullptr, &image.mem));
+        VK_CHECK(vkBindImageMemory(m_Device, image.image, image.mem, 0));
+    }
+    {
+        VkImageViewCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        info.components = { VK_COMPONENT_SWIZZLE_IDENTITY };
+        info.format = imgInfo.format;
+        info.image = image.image;
+        info.subresourceRange = {
+            .aspectMask = imgInfo.aspectFlags,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        };
+        info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        
+        VK_CHECK(vkCreateImageView(m_Device, &info, nullptr, &image.view));
+    }
+
+    if(!imgInfo.gpuResource)
+        return;
+    
+    {
+        VkSamplerCreateInfo info{};
+        info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        info.anisotropyEnable = VK_FALSE;
+        info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        info.compareEnable = VK_FALSE;
+        info.compareOp = VK_COMPARE_OP_ALWAYS;
+        info.minFilter = VK_FILTER_LINEAR;
+        info.magFilter = VK_FILTER_LINEAR;
+        info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        
+        VK_CHECK(vkCreateSampler(m_Device, &info, nullptr, &image.sampler));
+    }
+}
+
+void RayTracer::DestroyImage(Image& image)
+{
+    vkDestroyImage(m_Device, image.image, nullptr);
+    vkDestroyImageView(m_Device, image.view, nullptr);
+    vkFreeMemory(m_Device, image.mem, nullptr);
+
+    if(!image.info.gpuResource)
+        return;
+    vkDestroySampler(m_Device, image.sampler, nullptr);
+
+    memset(&image, 0, sizeof(image));
+}

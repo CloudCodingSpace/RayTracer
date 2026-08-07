@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <vector>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
@@ -42,6 +44,68 @@ private:
     void CreateSwapchain();
     void Resize();
     void ResizeImages(u32 width, u32 height);
+
+private:
+    struct ImageInfo {
+        u32 width, height;
+        VkFormat format;
+        bool gpuResource;
+        VkImageUsageFlags usage;
+        VkMemoryPropertyFlagBits memProps;
+        VkImageAspectFlags aspectFlags;
+    };
+
+    struct Image {
+        ImageInfo info;
+        VkImage image;
+        VkDeviceMemory mem;
+        VkImageView view;
+        VkSampler sampler;
+    };
+
+    struct BufferInfo {
+        u64 size;
+        VkMemoryPropertyFlags memProps;
+        VkBufferUsageFlags usage;
+        void* data;
+    };
+
+    struct Buffer {
+        BufferInfo info;
+        VkBuffer buffer;
+        VkDeviceMemory memory;
+    };
+
+    class Camera
+    {
+    public:
+        void Create(RayTracer* rt);
+
+        void Update();
+
+        inline glm::vec3 GetPos() { return m_Pos; }
+        inline glm::vec3 GetFront() { return m_Front; }
+        inline glm::vec3 GetUp() { return m_Up; }
+        inline glm::vec3 GetRight() { return m_Right; }
+        inline glm::mat4 GetVP() { return m_Proj * m_View; }
+    private:
+        glm::mat4 m_Proj = glm::mat4(1.0f);
+        glm::mat4 m_View = glm::mat4(1.0f);
+        glm::vec3 m_Front, m_Right, m_Up, m_Pos;
+        RayTracer* m_Rt = nullptr;
+        bool m_FirstMouse = true;
+
+        float m_LastX = 400, m_LastY = 300, m_Yaw = -90.0f, m_Pitch = 0.0f;
+        const float m_Fov = 86.0f, m_Sensitivity = 0.05f, m_Speed = 0.5f;
+    };
+
+private:
+    void CreateBuffer(Buffer& buffer, const BufferInfo& info);
+    void DestroyBuffer(Buffer& buffer);
+    void UploadDataToBuffer(Buffer& buffer, void* data);
+
+    void CreateImage(Image& image, const ImageInfo& info);
+    void DestroyImage(Image& image);
 
 private:
     struct {
