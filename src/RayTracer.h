@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <vector>
-#include <set>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
@@ -17,6 +16,7 @@ typedef uint8_t u8;
 typedef int32_t i32;
 
 #define FRAMES_IN_FLIGHT 2
+#define DT_SAMPLES 10
 
 struct ScCaps
 {
@@ -95,7 +95,9 @@ private:
 
     u32 m_ImageIdx = 0;
     u32 m_FrameIdx = 0;
+    u32 m_DtIdx = 0;
     bool m_ResizeImages = false;
     ImVec2 m_SceneSize = ImVec2(0, 0);
-    double m_DeltaTime = 0, m_LastTime = 0, m_DeltaAccum = 0, m_DisplayedDelta = 0;
+    double m_DeltaTime[DT_SAMPLES];
+    double m_LastTime = 0, m_DisplayedDelta = 0;
 };

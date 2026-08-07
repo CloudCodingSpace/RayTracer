@@ -40,6 +40,7 @@ static uint32_t FindMemoryType(VkPhysicalDevice device, uint32_t typeFilter, VkM
     }
 
     assert(false && "Failed to find the suitable memory index!");
+    return 0xffffffff;
 }
 
 RayTracer::RayTracer() : m_Width{800}, m_Height{600}
@@ -533,8 +534,59 @@ RayTracer::RayTracer() : m_Width{800}, m_Height{600}
         ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		ImGuiStyle& style = ImGui::GetStyle();
-		style.WindowPadding = ImVec2(0, 0);
+		
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.WindowRounding = 12.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        style.WindowPadding = ImVec2(0.0f, 0.0f);
+        style.FrameBorderSize = 3;
+        style.FramePadding = ImVec2(5, 5);
+        style.FrameRounding = 6;
+        style.TabRounding = 6;
+        style.GrabRounding = 6;
+        style.PopupRounding = 6;
+        style.ChildRounding = 6;
+        style.WindowRounding = 6;
+        style.ScrollbarRounding = 6;
+        ImVec4* colors = style.Colors;
+        colors[ImGuiCol_TextDisabled]           = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+        colors[ImGuiCol_WindowBg]               = ImVec4(0.13f, 0.13f, 0.13f, 1.00f);
+        colors[ImGuiCol_ChildBg]                = ImVec4(0.13f, 0.13f, 0.13f, 0.00f);
+        colors[ImGuiCol_PopupBg]                = ImVec4(0.13f, 0.13f, 0.13f, 0.94f);
+        colors[ImGuiCol_Border]                 = ImVec4(0.00f, 0.00f, 0.00f, 0.50f);
+        colors[ImGuiCol_BorderShadow]           = ImVec4(0.14f, 0.14f, 0.14f, 0.74f);
+        colors[ImGuiCol_FrameBg]                = ImVec4(0.33f, 0.33f, 0.33f, 0.54f);
+        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.31f, 0.31f, 0.31f, 0.40f);
+        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.23f, 0.23f, 0.23f, 0.75f);
+        colors[ImGuiCol_TitleBg]                = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+        colors[ImGuiCol_TitleBgActive]          = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+        colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.12f, 0.12f, 0.12f, 0.51f);
+        colors[ImGuiCol_MenuBarBg]              = ImVec4(0.13f, 0.13f, 0.13f, 1.00f);
+        colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.13f, 0.13f, 0.13f, 0.53f);
+        colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
+        colors[ImGuiCol_CheckMark]              = ImVec4(0.40f, 0.40f, 0.41f, 1.00f);
+        colors[ImGuiCol_SliderGrab]             = ImVec4(0.39f, 0.39f, 0.40f, 1.00f);
+        colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.43f, 0.43f, 0.43f, 1.00f);
+        colors[ImGuiCol_Button]                 = ImVec4(0.25f, 0.24f, 0.24f, 0.40f);
+        colors[ImGuiCol_ButtonHovered]          = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
+        colors[ImGuiCol_ButtonActive]           = ImVec4(0.46f, 0.46f, 0.46f, 1.00f);
+        colors[ImGuiCol_Header]                 = ImVec4(0.29f, 0.29f, 0.29f, 0.31f);
+        colors[ImGuiCol_HeaderHovered]          = ImVec4(0.29f, 0.29f, 0.29f, 0.31f);
+        colors[ImGuiCol_HeaderActive]           = ImVec4(0.46f, 0.46f, 0.46f, 1.00f);
+        colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.39f, 0.39f, 0.39f, 0.78f);
+        colors[ImGuiCol_SeparatorActive]        = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+        colors[ImGuiCol_ResizeGrip]             = ImVec4(0.16f, 0.16f, 0.16f, 0.20f);
+        colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.20f, 0.20f, 0.20f, 0.67f);
+        colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.27f, 0.28f, 0.28f, 0.95f);
+        colors[ImGuiCol_TabHovered]             = ImVec4(0.27f, 0.27f, 0.27f, 0.80f);
+        colors[ImGuiCol_Tab]                    = ImVec4(0.28f, 0.28f, 0.28f, 0.86f);
+        colors[ImGuiCol_TabSelected]            = ImVec4(0.47f, 0.47f, 0.47f, 1.00f);
+        colors[ImGuiCol_TabSelectedOverline]    = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
+        colors[ImGuiCol_TabDimmed]              = ImVec4(0.18f, 0.19f, 0.21f, 0.97f);
+        colors[ImGuiCol_TabDimmedSelected]      = ImVec4(0.17f, 0.19f, 0.22f, 1.00f);
+        colors[ImGuiCol_TabDimmedSelectedOverline]  = ImVec4(0.19f, 0.17f, 0.17f, 1.00f);
+        colors[ImGuiCol_DockingPreview]         = ImVec4(0.20f, 0.29f, 0.41f, 0.70f);
+        colors[ImGuiCol_TitleBgActive]          = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);
 
         io.Fonts->AddFontFromFileTTF("assets/fonts/consolas.ttf", 18.0f, nullptr, nullptr);
 
@@ -625,16 +677,17 @@ void RayTracer::Run()
     {
         // Delta time
         {
-            double currentTime = glfwGetTime();
-            m_DeltaTime = currentTime - m_LastTime;
+            m_DtIdx = (m_DtIdx + 1) % DT_SAMPLES;
+
+            double currentTime = glfwGetTime() * 1000;
+            double dt = currentTime - m_LastTime;
             m_LastTime = currentTime;
 
-            m_DeltaAccum += m_DeltaTime;
-            if(m_DeltaAccum >= 0.2)
-            {
-                m_DisplayedDelta = m_DeltaTime * 1000;
-                m_DeltaAccum = 0;
+            m_DeltaTime[m_DtIdx] = dt;
+            for(u32 i = 0; i < DT_SAMPLES; i++) {
+                m_DisplayedDelta += m_DeltaTime[i];
             }
+            m_DisplayedDelta /= DT_SAMPLES;
         }
 
         if(m_ResizeImages) {
