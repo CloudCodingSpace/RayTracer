@@ -7,3 +7,9 @@
 [submodule "nfd"]
 	path = libs/nfd
 	url = https://github.com/CloudCodingSpace/nfd
+[submodule "cgltf"]
+	path = libs/cgltf
+	url = https://github.com/CloudCodingSpace/cgltf
+[submodule "stb"]
+	path = libs/stb
+	url = https://github.com/CloudCodingSpace/stb
