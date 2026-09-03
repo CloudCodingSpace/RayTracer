@@ -2,7 +2,7 @@
 
 int main(void)
 {
-    RayTracer tracer;
+    RayTracer tracer{};
     tracer.Run();
 
     return 0;
