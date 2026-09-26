@@ -71,6 +71,7 @@ protected:
 
     struct BufferInfo {
         u64 size;
+        bool bda;
         VkMemoryPropertyFlags memProps;
         VkBufferUsageFlags usage;
         void* data;

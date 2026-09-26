@@ -60,7 +60,7 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
             .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
             .pEngineName = name,
             .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-            .apiVersion = VK_API_VERSION_1_0
+            .apiVersion = VK_API_VERSION_1_2
         };
 
         VkInstanceCreateInfo info = {
@@ -100,13 +100,17 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
                     pIdx = i;
                 
                 VkPhysicalDeviceScalarBlockLayoutFeatures scalarFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES };
+                VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures = { 
+                    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+                    .pNext = &scalarFeatures
+                };
                 VkPhysicalDeviceFeatures2 features = {};
                 features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-                features.pNext = &scalarFeatures;
+                features.pNext = &bdaFeatures;
 
                 vkGetPhysicalDeviceFeatures2(device, &features);
 
-                if(present && (gIdx != -1) && (pIdx != -1) && (cIdx != -1) && scalarFeatures.scalarBlockLayout) {
+                if(present && (gIdx != -1) && (pIdx != -1) && (cIdx != -1) && scalarFeatures.scalarBlockLayout && bdaFeatures.bufferDeviceAddress) {
                     m_PhysicalDevice = device;
                     m_GraphicsQueueIdx = gIdx;
                     m_PresentQueueIdx = pIdx;
@@ -175,9 +179,14 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
             queueInfos.push_back(info);
         }
 
+        VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures = {};
+        bdaFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+        bdaFeatures.bufferDeviceAddress = VK_TRUE;
+
         VkPhysicalDeviceScalarBlockLayoutFeatures scalarFeatures = {};
         scalarFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
         scalarFeatures.scalarBlockLayout = VK_TRUE;
+        scalarFeatures.pNext = &bdaFeatures;
 
         VkDeviceCreateInfo info = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -865,6 +874,9 @@ void Application::CreateBuffer(Buffer& buffer, const BufferInfo& buffInfo)
         info.sharingMode = m_UniqueQueues.size() > 1 ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE;
         info.size = buffInfo.size;
         info.usage = buffInfo.usage;
+
+        if(buffInfo.bda)
+            info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         
         VK_CHECK(vkCreateBuffer(m_Device, &info, nullptr, &buffer.buffer));
     }
@@ -872,10 +884,19 @@ void Application::CreateBuffer(Buffer& buffer, const BufferInfo& buffInfo)
         VkMemoryRequirements req{};
         vkGetBufferMemoryRequirements(m_Device, buffer.buffer, &req);
 
+        VkMemoryAllocateFlagsInfo flagInfo = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+            .pNext = NULL,
+            .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT
+        };
+
         VkMemoryAllocateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         info.memoryTypeIndex = FindMemoryType(m_PhysicalDevice, req.memoryTypeBits, buffInfo.memProps);
         info.allocationSize = req.size;
+
+        if(buffInfo.bda)
+            info.pNext = &flagInfo;
         
         VK_CHECK(vkAllocateMemory(m_Device, &info, nullptr, &buffer.memory));
         VK_CHECK(vkBindBufferMemory(m_Device, buffer.buffer, buffer.memory, 0));
