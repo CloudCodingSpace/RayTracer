@@ -1,10 +1,12 @@
 #version 450
 
+#extension GL_EXT_scalar_block_layout : require
+
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout (set = 0, binding = 0, rgba8) uniform image2D u_Image;
 
-layout (push_constant) uniform PushConstant {
+layout (push_constant, scalar) uniform PushConstant {
     vec2 resolution;
 } pd;
 
@@ -14,9 +16,40 @@ struct Ray {
 };
 
 struct Sphere {
-    float radius;
     vec3 center;
+    float radius;
 };
+
+struct HitInfo {
+    vec3 normal;
+    vec3 worldPos;
+    float t;
+};
+
+bool DidRayHitSphere(Ray ray, Sphere sphere, out HitInfo info) {
+    float a = dot(ray.dir, ray.dir);
+    float b = 2 * dot(ray.dir, ray.origin - sphere.center);
+    float c = dot(ray.origin - sphere.center, ray.origin - sphere.center) - r*r;
+
+    float D = b*b - 4*a*c;
+    if(D < 0.0)
+        return false;
+    float D2 = sqrt(D);
+    float t0 = (-b - D2)/(2*a);
+    float t1 = (-b + D2)/(2*a);
+
+    float t = t0;
+    if(t < 0)
+        t = t1;
+    if(result < 0)
+        return false;
+    
+    info.t = t;
+    info.worldPos = ray.origin + t * ray.dir;
+    info.normal = normalize(info.worldPos - sphere.center);
+
+    return true;
+}
 
 void main() {
     ivec2 fragCoord = ivec2(gl_GlobalInvocationID.xy);
