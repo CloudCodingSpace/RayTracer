@@ -8,8 +8,21 @@ layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout (set = 0, binding = 0, rgba8) uniform image2D u_Image;
 
+layout(buffer_reference, scalar) readonly buffer CameraBuffer {
+    vec3 front;
+    vec3 right;
+    vec3 up;
+    vec3 position;
+    float fov;
+};
+
+layout(buffer_reference, scalar) readonly buffer BufferRefs {
+    CameraBuffer camera;
+}
+
 layout (push_constant, scalar) uniform PushConstant {
     vec2 resolution;
+    //BufferRefs ref;
 } pd;
 
 void main() {
