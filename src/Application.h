@@ -49,7 +49,6 @@ protected:
     ScCaps GetScCaps();
     void CreateSwapchain();
     void Resize();
-    void ResizeImages(u32 width, u32 height);
 
 protected:
     struct ImageInfo {
@@ -90,6 +89,7 @@ protected:
 
         void Update(float dt);
 
+        inline float GetFOV() { return m_Fov; }
         inline glm::vec3 GetPos() { return m_Pos; }
         inline glm::vec3 GetFront() { return m_Front; }
         inline glm::vec3 GetUp() { return m_Up; }
@@ -103,7 +103,7 @@ protected:
         bool m_FirstMouse = true;
 
         float m_LastX = 400, m_LastY = 300, m_Yaw = -90.0f, m_Pitch = 0.0f;
-        const float m_Fov = 86.0f, m_Sensitivity = 0.05f, m_Speed = 0.5f;
+        const float m_Fov = 90.0f, m_Sensitivity = 0.05f, m_Speed = 0.05f;
     };
 
 protected:
@@ -120,10 +120,6 @@ protected:
     void BeginCommandBuffer(VkCommandBuffer buffer, VkCommandBufferUsageFlagBits usage);
 
 protected:
-    struct {
-        float resolution[2];
-    } m_PushConstantData = {};
-
     GLFWwindow* m_Window = nullptr;
     int m_Width, m_Height;
 

@@ -2,6 +2,28 @@
 
 RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
 {
+    // Camera
+    m_Camera.Create(this);
+
+    // Buffers
+    {
+        BufferInfo info{};
+        info.bda = true;
+        info.size = sizeof(CameraBufferData);
+        info.memProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+        for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
+            CreateBuffer(m_CameraBuffer[i], info);
+            VK_CHECK(vkMapMemory(m_Device, m_CameraBuffer[i].memory, 0, sizeof(info.size), 0, &m_CameraBufferMappedMem[i]));
+            
+            VkBufferDeviceAddressInfo bdaInfo{};
+            bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+            bdaInfo.buffer = m_CameraBuffer[i].buffer;
+            m_CameraBufferAddress[i] = vkGetBufferDeviceAddress(m_Device, &bdaInfo);
+        }
+    }
+
     // Storage images
     {
         VkFence fence = CreateFence();
@@ -133,7 +155,6 @@ RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
             
             VK_CHECK(vkCreatePipelineLayout(m_Device, &layInfo, nullptr, &m_PipelineLayout));
         }
-
         
         VkShaderModuleCreateInfo modInfo = {};
         modInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -175,6 +196,11 @@ RayTracer::~RayTracer()
     
     vkDestroyDescriptorPool(m_Device, m_DescPool, nullptr);
 
+    for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        vkUnmapMemory(m_Device, m_CameraBuffer[i].memory);
+        DestroyBuffer(m_CameraBuffer[i]);
+    }
+
     for(auto& set : m_IgSets)
         ImGui_ImplVulkan_RemoveTexture(set);
 
@@ -211,70 +237,87 @@ void RayTracer::Run()
         glfwGetFramebufferSize(m_Window, &m_Width, &m_Height);
         if(!StartFrame())
             continue;
-        
-        // Draw commands
+            
+        // Update
         {
-            m_PushConstantData.resolution[0] = m_StorageImages[m_FrameIdx].info.width;
-            m_PushConstantData.resolution[1] = m_StorageImages[m_FrameIdx].info.height;
+            m_Camera.Update(m_DisplayedDelta);
+            CameraBufferData data{};
+            data.fov = m_Camera.GetFOV();
+            data.front = m_Camera.GetFront();
+            data.position = m_Camera.GetPos();
+            data.right = m_Camera.GetRight();
+            data.up = m_Camera.GetUp();
 
-            const int localSizeX = 16;
-            const int localSizeY = 16;
-
-            vkCmdBindPipeline(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_BIND_POINT_COMPUTE, m_Pipeline);
-            vkCmdPushConstants(m_ComputeCmdBuffs[m_FrameIdx], m_PipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(m_PushConstantData), &m_PushConstantData);
-            vkCmdBindDescriptorSets(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_BIND_POINT_COMPUTE, m_PipelineLayout, 0, 1, &m_Sets[m_FrameIdx], 0, nullptr);
-
-            u32 groupX = (m_StorageImages[m_FrameIdx].info.width + localSizeX - 1) / localSizeX;
-            u32 groupY = (m_StorageImages[m_FrameIdx].info.height + localSizeY - 1) / localSizeY;
-
-            vkCmdDispatch(m_ComputeCmdBuffs[m_FrameIdx], groupX, groupY, 1);
+            memcpy(m_CameraBufferMappedMem[m_FrameIdx], &data, sizeof(CameraBufferData));
         }
 
-        // Memory
+        // Main rendering
         {
-            VkImageMemoryBarrier barrier{};
-            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            // Draw commands
+            {
+                m_PushConstantData.resolution[0] = m_StorageImages[m_FrameIdx].info.width;
+                m_PushConstantData.resolution[1] = m_StorageImages[m_FrameIdx].info.height;
+                m_PushConstantData.cameraBuffer = m_CameraBufferAddress[m_FrameIdx];
 
-            barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-            barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                const int localSizeX = 16;
+                const int localSizeY = 16;
 
-            barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                vkCmdBindPipeline(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_BIND_POINT_COMPUTE, m_Pipeline);
+                vkCmdPushConstants(m_ComputeCmdBuffs[m_FrameIdx], m_PipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(m_PushConstantData), &m_PushConstantData);
+                vkCmdBindDescriptorSets(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_BIND_POINT_COMPUTE, m_PipelineLayout, 0, 1, &m_Sets[m_FrameIdx], 0, nullptr);
 
-            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                u32 groupX = (m_StorageImages[m_FrameIdx].info.width + localSizeX - 1) / localSizeX;
+                u32 groupY = (m_StorageImages[m_FrameIdx].info.height + localSizeY - 1) / localSizeY;
 
-            barrier.image = m_StorageImages[m_FrameIdx].image;
+                vkCmdDispatch(m_ComputeCmdBuffs[m_FrameIdx], groupX, groupY, 1);
+            }
 
-            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            barrier.subresourceRange.baseMipLevel = 0;
-            barrier.subresourceRange.levelCount = 1;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
+            // Memory
+            {
+                VkImageMemoryBarrier barrier{};
+                barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 
-            vkCmdPipelineBarrier(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-        }
+                barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+                barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-        // ImGui
-        {
-            ImGui::Begin("Scene");
-            ImVec2 res = ImGui::GetContentRegionAvail();
-            if((m_StorageImages[m_FrameIdx].info.width != res.x || m_StorageImages[m_FrameIdx].info.height != res.y) && res.x != 0 && res.y != 0) {
-                m_SceneSize = res;
-                m_ResizeImages = true;
+                barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+                barrier.image = m_StorageImages[m_FrameIdx].image;
+
+                barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                barrier.subresourceRange.baseMipLevel = 0;
+                barrier.subresourceRange.levelCount = 1;
+                barrier.subresourceRange.baseArrayLayer = 0;
+                barrier.subresourceRange.layerCount = 1;
+
+                vkCmdPipelineBarrier(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+            }
+
+            // ImGui
+            {
+                ImGui::Begin("Scene");
+                ImVec2 res = ImGui::GetContentRegionAvail();
+                if((m_StorageImages[m_FrameIdx].info.width != res.x || m_StorageImages[m_FrameIdx].info.height != res.y) && res.x != 0 && res.y != 0) {
+                    m_SceneSize = res;
+                    m_ResizeImages = true;
+                }
+                
+                ImGui::Image((ImTextureID)m_IgSets[m_FrameIdx], res, ImVec2(0, 1), ImVec2(1, 0));
+
+                ImGui::End();
+
+                ImGui::Begin("Settings");
+                ImGui::TextColored(ImVec4(0, 255, 0, 255), "Delta Time: %.2fms", m_DisplayedDelta);
+                ImGui::TextColored(ImVec4(0, 255, 0, 255), "Frame time: %.2f Hz", 1000/m_DisplayedDelta);
+                ImGui::End();
             }
             
-            ImGui::Image((ImTextureID)m_IgSets[m_FrameIdx], res, ImVec2(0, 1), ImVec2(1, 0));
-
-            ImGui::End();
-
-            ImGui::Begin("Settings");
-            ImGui::TextColored(ImVec4(0, 255, 0, 255), "Delta Time: %.2fms", m_DisplayedDelta);
-            ImGui::TextColored(ImVec4(0, 255, 0, 255), "Frame time: %.2f Hz", 1000/m_DisplayedDelta);
-            ImGui::End();
+            EndFrame();
         }
-        
-        EndFrame();
         
         if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             break;
