@@ -18,14 +18,17 @@ layout(buffer_reference, scalar) readonly buffer CameraBuffer {
     float fov;
 };
 
+layout(buffer_reference, scalar) readonly buffer BufferRefs {
+    CameraBuffer cameraBuffer;
+};
+
 layout (push_constant, scalar) uniform PushConstant {
     vec2 resolution;
-    CameraBuffer cameraBuffer;
+    BufferRefs bufferRefs;
 } pd;
 
 void main() {
-    CameraBuffer camera = pd.cameraBuffer;
-
+    CameraBuffer camera = pd.bufferRefs.cameraBuffer;
     ivec2 fragCoord = ivec2(gl_GlobalInvocationID.xy);
 
     vec2 uv = vec2(fragCoord) / pd.resolution;

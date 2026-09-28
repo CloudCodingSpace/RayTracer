@@ -103,7 +103,7 @@ protected:
         bool m_FirstMouse = true;
 
         float m_LastX = 400, m_LastY = 300, m_Yaw = -90.0f, m_Pitch = 0.0f;
-        const float m_Fov = 90.0f, m_Sensitivity = 0.05f, m_Speed = 0.05f;
+        const float m_Fov = 90.0f, m_Sensitivity = 0.05f, m_Speed = 0.025f;
     };
 
 protected:

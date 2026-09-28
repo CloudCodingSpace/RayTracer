@@ -7,20 +7,42 @@ RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
 
     // Buffers
     {
-        BufferInfo info{};
-        info.bda = true;
-        info.size = sizeof(CameraBufferData);
-        info.memProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        // Camera buffer
+        {
+            BufferInfo info{};
+            info.bda = true;
+            info.size = sizeof(CameraBufferData);
+            info.memProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-        for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
-            CreateBuffer(m_CameraBuffer[i], info);
-            VK_CHECK(vkMapMemory(m_Device, m_CameraBuffer[i].memory, 0, sizeof(info.size), 0, &m_CameraBufferMappedMem[i]));
-            
-            VkBufferDeviceAddressInfo bdaInfo{};
-            bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-            bdaInfo.buffer = m_CameraBuffer[i].buffer;
-            m_CameraBufferAddress[i] = vkGetBufferDeviceAddress(m_Device, &bdaInfo);
+            for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
+                CreateBuffer(m_CameraBuffer[i], info);
+                VK_CHECK(vkMapMemory(m_Device, m_CameraBuffer[i].memory, 0, sizeof(info.size), 0, &m_CameraBufferMappedMem[i]));
+                
+                VkBufferDeviceAddressInfo bdaInfo{};
+                bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                bdaInfo.buffer = m_CameraBuffer[i].buffer;
+                m_CameraBufferAddress[i] = vkGetBufferDeviceAddress(m_Device, &bdaInfo);
+            }
+        }
+
+        // Buffer refs buffer
+        {        
+            BufferInfo info{};
+            info.bda = true;
+            info.size = sizeof(BufferRefsData);
+            info.memProps = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+            for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
+                CreateBuffer(m_BufferRefs[i], info);
+                VK_CHECK(vkMapMemory(m_Device, m_BufferRefs[i].memory, 0, sizeof(info.size), 0, &m_BufferRefsMappedMem[i]));
+                
+                VkBufferDeviceAddressInfo bdaInfo{};
+                bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+                bdaInfo.buffer = m_BufferRefs[i].buffer;
+                m_BufferRefsAddress[i] = vkGetBufferDeviceAddress(m_Device, &bdaInfo);
+            }
         }
     }
 
@@ -199,6 +221,8 @@ RayTracer::~RayTracer()
     for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
         vkUnmapMemory(m_Device, m_CameraBuffer[i].memory);
         DestroyBuffer(m_CameraBuffer[i]);
+        vkUnmapMemory(m_Device, m_BufferRefs[i].memory);
+        DestroyBuffer(m_BufferRefs[i]);
     }
 
     for(auto& set : m_IgSets)
@@ -241,14 +265,18 @@ void RayTracer::Run()
         // Update
         {
             m_Camera.Update(m_DisplayedDelta);
-            CameraBufferData data{};
-            data.fov = m_Camera.GetFOV();
-            data.front = m_Camera.GetFront();
-            data.position = m_Camera.GetPos();
-            data.right = m_Camera.GetRight();
-            data.up = m_Camera.GetUp();
+            CameraBufferData cbData{};
+            cbData.fov = m_Camera.GetFOV();
+            cbData.front = m_Camera.GetFront();
+            cbData.position = m_Camera.GetPos();
+            cbData.right = m_Camera.GetRight();
+            cbData.up = m_Camera.GetUp();
 
-            memcpy(m_CameraBufferMappedMem[m_FrameIdx], &data, sizeof(CameraBufferData));
+            memcpy(m_CameraBufferMappedMem[m_FrameIdx], &cbData, sizeof(CameraBufferData));
+
+            BufferRefsData data{};
+            data.cameraBuffer = m_CameraBufferAddress[m_FrameIdx];
+            memcpy(m_BufferRefsMappedMem[m_FrameIdx], &data, sizeof(BufferRefsData));
         }
 
         // Main rendering
@@ -257,7 +285,7 @@ void RayTracer::Run()
             {
                 m_PushConstantData.resolution[0] = m_StorageImages[m_FrameIdx].info.width;
                 m_PushConstantData.resolution[1] = m_StorageImages[m_FrameIdx].info.height;
-                m_PushConstantData.cameraBuffer = m_CameraBufferAddress[m_FrameIdx];
+                m_PushConstantData.bufferRefs = m_BufferRefsAddress[m_FrameIdx];
 
                 const int localSizeX = 16;
                 const int localSizeY = 16;
