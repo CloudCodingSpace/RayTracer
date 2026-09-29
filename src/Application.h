@@ -89,7 +89,7 @@ protected:
 
         void Update(float dt);
 
-        inline float GetFOV() { return m_Fov; }
+        inline float& GetFOV() { return m_Fov; }
         inline glm::vec3 GetPos() { return m_Pos; }
         inline glm::vec3 GetFront() { return m_Front; }
         inline glm::vec3 GetUp() { return m_Up; }
@@ -102,8 +102,8 @@ protected:
         Application* m_Rt = nullptr;
         bool m_FirstMouse = true;
 
-        float m_LastX = 400, m_LastY = 300, m_Yaw = -90.0f, m_Pitch = 0.0f;
-        const float m_Fov = 90.0f, m_Sensitivity = 0.05f, m_Speed = 0.025f;
+        float m_LastX = 400, m_LastY = 300, m_Yaw = -90.0f, m_Pitch = 0.0f, m_Fov = 90.0f;
+        const float m_Sensitivity = 0.05f, m_Speed = 0.025f;
     };
 
 protected:

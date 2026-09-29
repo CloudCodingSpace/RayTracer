@@ -17,6 +17,10 @@ struct HitInfo {
     float t;
 };
 
+vec3 RayAt(Ray ray, float t) {
+    return ray.origin + t * ray.dir;
+}
+
 bool DidRayHitSphere(Ray ray, Sphere sphere, out HitInfo info) {
     float a = dot(ray.dir, ray.dir);
     float b = 2 * dot(ray.dir, ray.origin - sphere.center);
@@ -36,7 +40,7 @@ bool DidRayHitSphere(Ray ray, Sphere sphere, out HitInfo info) {
         return false;
     
     info.t = t;
-    info.worldPos = ray.origin + t * ray.dir;
+    info.worldPos = RayAt(ray, t);
     info.normal = normalize(info.worldPos - sphere.center);
 
     return true;

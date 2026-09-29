@@ -285,6 +285,7 @@ void RayTracer::Run()
             {
                 m_PushConstantData.resolution[0] = m_StorageImages[m_FrameIdx].info.width;
                 m_PushConstantData.resolution[1] = m_StorageImages[m_FrameIdx].info.height;
+                m_PushConstantData.aspectRatio = m_PushConstantData.resolution[0]/m_PushConstantData.resolution[1];
                 m_PushConstantData.bufferRefs = m_BufferRefsAddress[m_FrameIdx];
 
                 const int localSizeX = 16;
@@ -347,13 +348,17 @@ void RayTracer::Run()
             EndFrame();
         }
         
+        if(glfwGetKey(m_Window, GLFW_KEY_UP) == GLFW_PRESS)
+            m_Camera.GetFOV() += 0.02 * m_DisplayedDelta;
+        else if(glfwGetKey(m_Window, GLFW_KEY_DOWN) == GLFW_PRESS)
+            m_Camera.GetFOV() -= 0.02 * m_DisplayedDelta;
+
         if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             break;
 
         glfwPollEvents();
     }
 }
-
 
 void RayTracer::ResizeImages(u32 width, u32 height)
 {

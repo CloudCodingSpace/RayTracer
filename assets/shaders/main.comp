@@ -24,6 +24,7 @@ layout(buffer_reference, scalar) readonly buffer BufferRefs {
 
 layout (push_constant, scalar) uniform PushConstant {
     vec2 resolution;
+    float aspectRatio;
     BufferRefs bufferRefs;
 } pd;
 
@@ -33,11 +34,17 @@ void main() {
 
     vec2 uv = vec2(fragCoord) / pd.resolution;
     uv = uv * 2.0 - 1.0;
-    uv.x *= pd.resolution.x/pd.resolution.y;
+    uv.x *= pd.aspectRatio;
 
     Ray camRay;
     camRay.origin = camera.position;
-    camRay.dir = normalize(camera.front + uv.x * camera.right + uv.y * camera.up);
+    {
+        float fov = radians(camera.fov);
+        float halfHeight = tan(fov * 0.5);
+        float halfWidth = halfHeight;
+        vec2 screenCoords = uv * vec2(halfWidth, halfHeight);
+        camRay.dir = normalize(camera.front + screenCoords.x * camera.right + screenCoords.y * camera.up);
+    }
 
     Sphere sphere;
     sphere.center = vec3(0, 0, 2);
@@ -47,6 +54,8 @@ void main() {
     HitInfo hitInfo;
     if(DidRayHitSphere(camRay, sphere, hitInfo)) {
         color = vec3(1, 0, 0);
+    } else {
+        color = mix(vec3(0.5, 0.7, 1.0), vec3(1.0), (uv.y + 1)/2);
     }
 
     imageStore(u_Image, fragCoord, vec4(color, 1.0));
