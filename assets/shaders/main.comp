@@ -28,6 +28,8 @@ layout (push_constant, scalar) uniform PushConstant {
     BufferRefs bufferRefs;
 } pd;
 
+#define FLT_MAX 3.402823466e+38
+
 void main() {
     CameraBuffer camera = pd.bufferRefs.cameraBuffer;
     ivec2 fragCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -46,16 +48,38 @@ void main() {
         camRay.dir = normalize(camera.front + screenCoords.x * camera.right + screenCoords.y * camera.up);
     }
 
-    Sphere sphere;
-    sphere.center = vec3(0, 0, 2);
-    sphere.radius = 0.5;
+    const uint sphereCount = 3;
+    Sphere spheres[sphereCount];
+    spheres[0].center = vec3( 0.0, 0.0, 2.0);
+    spheres[0].radius = 0.5;
+    spheres[1].center = vec3(-2.0, 0.0, 2.0);
+    spheres[1].radius = 0.5;
+    spheres[2].center = vec3( 2.0, 0.0, 2.0);
+    spheres[2].radius = 0.5;
 
+    int idx = -1;
+    float closestT = FLT_MAX;
     vec3 color = vec3(0.0);
-    HitInfo hitInfo;
-    if(DidRayHitSphere(camRay, sphere, hitInfo)) {
-        color = vec3(1, 0, 0);
-    } else {
+
+    for(int i = 0; i < sphereCount; i++) {
+        HitInfo hitInfo;
+        if(DidRayHitSphere(camRay, spheres[i], hitInfo)) {
+            if(closestT > hitInfo.t) {
+                closestT = hitInfo.t;
+                idx = i;
+            }
+        }
+    }
+    
+    if(idx == -1) {
         color = mix(vec3(0.5, 0.7, 1.0), vec3(1.0), (uv.y + 1)/2);
+    } else {
+        if(idx == 0)
+            color = vec3(1, 0, 0);
+        else if(idx == 1)
+            color = vec3(0, 1, 0);
+        else if(idx == 2)
+            color = vec3(0, 0, 1);
     }
 
     imageStore(u_Image, fragCoord, vec4(color, 1.0));
