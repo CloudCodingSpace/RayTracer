@@ -40,12 +40,12 @@ void main() {
     CameraBuffer camera = pd.bufferRefs.cameraBuffer;
     SphereBuffer spheres = pd.bufferRefs.sphereBuffer;
 
+    ivec2 fragCoord = ivec2(gl_GlobalInvocationID.xy);
+
     seed = pd.seed;
     seed ^= uint(fragCoord.x) * 1973u;
     seed ^= uint(fragCoord.y) * 9277u;
     seed = pcg_hash(seed);
-    
-    ivec2 fragCoord = ivec2(gl_GlobalInvocationID.xy);
 
     vec2 uv = (vec2(fragCoord) + 0.5) / pd.resolution;
     uv = uv * 2.0 - 1.0;
