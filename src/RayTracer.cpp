@@ -320,6 +320,7 @@ void RayTracer::Run()
             {
                 m_PushConstantData.resolution[0] = m_StorageImages[m_FrameIdx].info.width;
                 m_PushConstantData.resolution[1] = m_StorageImages[m_FrameIdx].info.height;
+                m_PushConstantData.seed = rand();
                 m_PushConstantData.aspectRatio = m_PushConstantData.resolution[0]/m_PushConstantData.resolution[1];
                 m_PushConstantData.bufferRefs = m_BufferRefsAddress[m_FrameIdx];
 

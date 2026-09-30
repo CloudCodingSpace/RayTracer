@@ -5,6 +5,7 @@
 #extension GL_GOOGLE_include_directive : require
 
 #include "structs.glsl"
+#include "random.glsl"
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
@@ -30,16 +31,16 @@ layout(buffer_reference, scalar) readonly buffer BufferRefs {
 
 layout (push_constant, scalar) uniform PushConstant {
     vec2 resolution;
+    uint seed;
     float aspectRatio;
     BufferRefs bufferRefs;
 } pd;
-
-#define FLT_MAX 3.402823466e+38
 
 void main() {
     CameraBuffer camera = pd.bufferRefs.cameraBuffer;
     SphereBuffer spheres = pd.bufferRefs.sphereBuffer;
 
+    seed = pd.seed;
     ivec2 fragCoord = ivec2(gl_GlobalInvocationID.xy);
 
     vec2 uv = (vec2(fragCoord) + 0.5) / pd.resolution;

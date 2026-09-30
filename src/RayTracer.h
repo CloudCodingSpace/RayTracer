@@ -37,6 +37,7 @@ private:
     struct PushConstantData
     {
         glm::vec2 resolution;
+        u32 seed;
         float aspectRatio;
         VkDeviceAddress bufferRefs;
     };
