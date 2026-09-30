@@ -13,6 +13,12 @@ public:
     virtual void Run() override;
 
 private:
+    struct Sphere 
+    {
+        glm::vec3 center;
+        float radius;
+    };
+
     struct CameraBufferData
     {
         glm::vec3 front;
@@ -25,6 +31,7 @@ private:
     struct BufferRefsData
     {
         VkDeviceAddress cameraBuffer;
+        VkDeviceAddress sphereBuffer;
     };
 
     struct PushConstantData
@@ -46,6 +53,9 @@ private:
     VkDescriptorSet m_Sets[FRAMES_IN_FLIGHT] = {};
     VkDescriptorSet m_IgSets[FRAMES_IN_FLIGHT] = {};
 
+    VkDeviceAddress m_SphereBufferAddress;
+    Buffer m_SphereBuffer;
+    
     VkDeviceAddress m_BufferRefsAddress[FRAMES_IN_FLIGHT];
     void* m_BufferRefsMappedMem[FRAMES_IN_FLIGHT];
     Buffer m_BufferRefs[FRAMES_IN_FLIGHT];
@@ -56,6 +66,7 @@ private:
     
     Image m_StorageImages[FRAMES_IN_FLIGHT];
 
+    std::vector<Sphere> m_Spheres;
     PushConstantData m_PushConstantData{};
     Camera m_Camera{};
     u32 m_DtIdx = 0;

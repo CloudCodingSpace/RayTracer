@@ -5,6 +5,13 @@ RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
     // Camera
     m_Camera.Create(this);
 
+    // Spheres
+    {
+        m_Spheres.push_back({ {  0, 0, 2 }, 0.5 });
+        m_Spheres.push_back({ { -2, 0, 2 }, 0.5 });
+        m_Spheres.push_back({ {  2, 0, 2 }, 0.5 });
+    }
+
     // Buffers
     {
         // Camera buffer
@@ -24,6 +31,31 @@ RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
                 bdaInfo.buffer = m_CameraBuffer[i].buffer;
                 m_CameraBufferAddress[i] = vkGetBufferDeviceAddress(m_Device, &bdaInfo);
             }
+        }
+
+        // Sphere buffer
+        {
+            BufferInfo info{};
+            info.bda = true;
+            info.size = sizeof(u32) + sizeof(Sphere) * m_Spheres.size();
+            info.memProps = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+            CreateBuffer(m_SphereBuffer, info);
+
+            void* data = calloc(1, info.size);
+            u32 sphereCount = m_Spheres.size();
+            memcpy(data, &sphereCount, sizeof(u32));
+            memcpy(((u8*)data) + sizeof(u32), m_Spheres.data(), info.size - sizeof(u32));
+
+            UploadDataToBuffer(m_SphereBuffer, data);
+
+            free(data);
+
+            VkBufferDeviceAddressInfo bdaInfo{};
+            bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+            bdaInfo.buffer = m_SphereBuffer.buffer;
+            m_SphereBufferAddress = vkGetBufferDeviceAddress(m_Device, &bdaInfo);
         }
 
         // Buffer refs buffer
@@ -218,6 +250,8 @@ RayTracer::~RayTracer()
     
     vkDestroyDescriptorPool(m_Device, m_DescPool, nullptr);
 
+    DestroyBuffer(m_SphereBuffer);
+
     for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
         vkUnmapMemory(m_Device, m_CameraBuffer[i].memory);
         DestroyBuffer(m_CameraBuffer[i]);
@@ -276,6 +310,7 @@ void RayTracer::Run()
 
             BufferRefsData data{};
             data.cameraBuffer = m_CameraBufferAddress[m_FrameIdx];
+            data.sphereBuffer = m_SphereBufferAddress;
             memcpy(m_BufferRefsMappedMem[m_FrameIdx], &data, sizeof(BufferRefsData));
         }
 
@@ -348,7 +383,7 @@ void RayTracer::Run()
             EndFrame();
         }
         
-        if(glfwGetKey(m_Window, GLFW_KEY_UP) == GLFW_PRESS)
+        if(glfwGetKey(m_Window, GLFW_KEY_UP) == GLFW_PRESS && m_Camera.GetFOV() < 180)
             m_Camera.GetFOV() += 0.02 * m_DisplayedDelta;
         else if(glfwGetKey(m_Window, GLFW_KEY_DOWN) == GLFW_PRESS)
             m_Camera.GetFOV() -= 0.02 * m_DisplayedDelta;
