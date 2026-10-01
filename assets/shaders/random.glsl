@@ -5,7 +5,7 @@
 #define UINT_MAX 4294967295u
 #define PI 3.141592653589793
 
-uint seed = 0;
+uint g_Seed = 0;
 
 // Taken from the internet, from stackoverflow
 uint pcg_hash(uint i) {
@@ -15,8 +15,8 @@ uint pcg_hash(uint i) {
 }
 
 float RandomFloat() {
-    uint r = pcg_hash(seed);
-    seed = pcg_hash(seed);
+    uint r = pcg_hash(g_Seed);
+    g_Seed = pcg_hash(seed);
 
     return float(r) / UINT_MAX;
 }
