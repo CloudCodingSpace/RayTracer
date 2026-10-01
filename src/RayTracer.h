@@ -58,11 +58,9 @@ private:
     Buffer m_SphereBuffer;
     
     VkDeviceAddress m_BufferRefsAddress[FRAMES_IN_FLIGHT];
-    void* m_BufferRefsMappedMem[FRAMES_IN_FLIGHT];
     Buffer m_BufferRefs[FRAMES_IN_FLIGHT];
 
     VkDeviceAddress m_CameraBufferAddress[FRAMES_IN_FLIGHT];
-    void* m_CameraBufferMappedMem[FRAMES_IN_FLIGHT];
     Buffer m_CameraBuffer[FRAMES_IN_FLIGHT];
     
     Image m_StorageImages[FRAMES_IN_FLIGHT];

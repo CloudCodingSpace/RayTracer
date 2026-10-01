@@ -24,7 +24,6 @@ RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
 
             for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
                 CreateBuffer(m_CameraBuffer[i], info);
-                VK_CHECK(vkMapMemory(m_Device, m_CameraBuffer[i].memory, 0, info.size, 0, &m_CameraBufferMappedMem[i]));
                 
                 VkBufferDeviceAddressInfo bdaInfo{};
                 bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -68,7 +67,6 @@ RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
 
             for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
                 CreateBuffer(m_BufferRefs[i], info);
-                VK_CHECK(vkMapMemory(m_Device, m_BufferRefs[i].memory, 0, info.size, 0, &m_BufferRefsMappedMem[i]));
                 
                 VkBufferDeviceAddressInfo bdaInfo{};
                 bdaInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
@@ -253,9 +251,7 @@ RayTracer::~RayTracer()
     DestroyBuffer(m_SphereBuffer);
 
     for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
-        vkUnmapMemory(m_Device, m_CameraBuffer[i].memory);
         DestroyBuffer(m_CameraBuffer[i]);
-        vkUnmapMemory(m_Device, m_BufferRefs[i].memory);
         DestroyBuffer(m_BufferRefs[i]);
     }
 
@@ -306,12 +302,13 @@ void RayTracer::Run()
             cbData.right = m_Camera.GetRight();
             cbData.up = m_Camera.GetUp();
 
-            memcpy(m_CameraBufferMappedMem[m_FrameIdx], &cbData, sizeof(CameraBufferData));
+            UploadDataToBuffer(m_CameraBuffer[m_FrameIdx], &cbData);
 
             BufferRefsData data{};
             data.cameraBuffer = m_CameraBufferAddress[m_FrameIdx];
             data.sphereBuffer = m_SphereBufferAddress;
-            memcpy(m_BufferRefsMappedMem[m_FrameIdx], &data, sizeof(BufferRefsData));
+
+            UploadDataToBuffer(m_BufferRefs[m_FrameIdx], &data);
         }
 
         // Main rendering

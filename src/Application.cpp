@@ -902,12 +902,20 @@ void Application::CreateBuffer(Buffer& buffer, const BufferInfo& buffInfo)
         VK_CHECK(vkBindBufferMemory(m_Device, buffer.buffer, buffer.memory, 0));
     }
 
+    if((buffInfo.memProps & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {
+        VK_CHECK(vkMapMemory(m_Device, buffer.memory, 0, buffInfo.size, 0, &buffer.mappedMem));
+    }
+
     if(buffInfo.data)
         UploadDataToBuffer(buffer, buffInfo.data);
 }
 
 void Application::DestroyBuffer(Buffer& buffer)
 {
+    if((buffer.info.memProps & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {
+        vkUnmapMemory(m_Device, buffer.memory);
+    }
+
     vkDestroyBuffer(m_Device, buffer.buffer, nullptr);
     vkFreeMemory(m_Device, buffer.memory, nullptr);
 
@@ -916,6 +924,11 @@ void Application::DestroyBuffer(Buffer& buffer)
 
 void Application::UploadDataToBuffer(Buffer& buffer, void* data)
 {
+    if((buffer.info.memProps & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {
+        memcpy(buffer.mappedMem, data, buffer.info.size);
+        return;
+    }
+
     if((buffer.info.usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) != VK_BUFFER_USAGE_TRANSFER_DST_BIT || !buffer.info.size)
         assert(false && "Can't upload to buffer!");
 
@@ -930,10 +943,7 @@ void Application::UploadDataToBuffer(Buffer& buffer, void* data)
     Buffer stagingBuffer{};
     CreateBuffer(stagingBuffer, buffInfo);
 
-    void* mappedMem = nullptr;
-    VK_CHECK(vkMapMemory(m_Device, stagingBuffer.memory, 0, buffInfo.size, 0, &mappedMem));
-    memcpy(mappedMem, data, buffInfo.size);
-    vkUnmapMemory(m_Device, stagingBuffer.memory);
+    memcpy(stagingBuffer.mappedMem, data, buffInfo.size);
 
     BeginCommandBuffer(cmdBuff, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     

@@ -80,6 +80,7 @@ protected:
         BufferInfo info;
         VkBuffer buffer;
         VkDeviceMemory memory;
+        void* mappedMem;
     };
 
     class Camera
