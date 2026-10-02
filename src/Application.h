@@ -37,7 +37,7 @@ struct ScCaps
 class Application
 {
 public:
-    Application(const char* name, int width, int height);
+    Application(const char* name, int width, int height, bool headless);
     ~Application();
 
     virtual void Run();
@@ -123,6 +123,7 @@ protected:
 protected:
     GLFWwindow* m_Window = nullptr;
     int m_Width, m_Height;
+    bool m_Headless;
 
     VkInstance m_Instance = nullptr;
     VkSurfaceKHR m_Surface = nullptr;

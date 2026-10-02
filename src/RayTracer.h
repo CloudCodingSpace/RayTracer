@@ -7,7 +7,7 @@
 class RayTracer : virtual Application
 {
 public:
-    RayTracer();
+    RayTracer(bool headless);
     ~RayTracer();
 
     virtual void Run() override;

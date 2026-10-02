@@ -1,6 +1,6 @@
 #include "RayTracer.h"
 
-RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
+RayTracer::RayTracer(bool headless) : Application("RayTracer", 1280, 720, headless)
 {
     // Camera
     m_Camera.Create(this);
@@ -234,6 +234,8 @@ RayTracer::RayTracer() : Application("RayTracer", 1280, 720)
         delete[] code;
     }
 
+    if(m_Headless)
+        return;
     for(u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
         m_IgSets[i] = ImGui_ImplVulkan_AddTexture(m_StorageImages[i].sampler, m_StorageImages[i].view, VK_IMAGE_LAYOUT_GENERAL);
     }
@@ -255,8 +257,10 @@ RayTracer::~RayTracer()
         DestroyBuffer(m_BufferRefs[i]);
     }
 
-    for(auto& set : m_IgSets)
-        ImGui_ImplVulkan_RemoveTexture(set);
+    if(!m_Headless) {
+        for(auto& set : m_IgSets)
+            ImGui_ImplVulkan_RemoveTexture(set);
+    }
 
     for(auto& image : m_StorageImages) 
         DestroyImage(image); 
@@ -265,33 +269,40 @@ RayTracer::~RayTracer()
 
 void RayTracer::Run()
 {
-    glfwShowWindow(m_Window);
-    while(!glfwWindowShouldClose(m_Window))
+    if(!m_Headless)
+        glfwShowWindow(m_Window);
+    while(true)
     {
-        // Delta time
-        {
-            m_DtIdx = (m_DtIdx + 1) % DT_SAMPLES;
+        if(!m_Headless) {
+            if(glfwWindowShouldClose(m_Window))
+                break;
 
-            double currentTime = glfwGetTime() * 1000;
-            double dt = currentTime - m_LastTime;
-            m_LastTime = currentTime;
+            // Delta time
+            {
+                m_DtIdx = (m_DtIdx + 1) % DT_SAMPLES;
 
-            m_DeltaTime[m_DtIdx] = dt;
-            for(u32 i = 0; i < DT_SAMPLES; i++) {
-                m_DisplayedDelta += m_DeltaTime[i];
+                double currentTime = glfwGetTime() * 1000;
+                double dt = currentTime - m_LastTime;
+                m_LastTime = currentTime;
+
+                m_DeltaTime[m_DtIdx] = dt;
+                for(u32 i = 0; i < DT_SAMPLES; i++) {
+                    m_DisplayedDelta += m_DeltaTime[i];
+                }
+                m_DisplayedDelta /= DT_SAMPLES;
             }
-            m_DisplayedDelta /= DT_SAMPLES;
+
+            if(m_ResizeImages) {
+                ResizeImages(m_SceneSize.x, m_SceneSize.y);
+                m_ResizeImages = false;
+            }
+
+            glfwGetFramebufferSize(m_Window, &m_Width, &m_Height);
         }
 
-        if(m_ResizeImages) {
-            ResizeImages(m_SceneSize.x, m_SceneSize.y);
-            m_ResizeImages = false;
-        }
-
-        glfwGetFramebufferSize(m_Window, &m_Width, &m_Height);
         if(!StartFrame())
             continue;
-            
+
         // Update
         {
             m_Camera.Update(m_DisplayedDelta);
@@ -358,38 +369,41 @@ void RayTracer::Run()
 
                 vkCmdPipelineBarrier(m_ComputeCmdBuffs[m_FrameIdx], VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
             }
-
-            // ImGui
-            {
-                ImGui::Begin("Scene");
-                ImVec2 res = ImGui::GetContentRegionAvail();
-                if((m_StorageImages[m_FrameIdx].info.width != res.x || m_StorageImages[m_FrameIdx].info.height != res.y) && res.x != 0 && res.y != 0) {
-                    m_SceneSize = res;
-                    m_ResizeImages = true;
-                }
-                
-                ImGui::Image((ImTextureID)m_IgSets[m_FrameIdx], res, ImVec2(0, 1), ImVec2(1, 0));
-
-                ImGui::End();
-
-                ImGui::Begin("Settings");
-                ImGui::TextColored(ImVec4(0, 255, 0, 255), "Delta Time: %.2fms", m_DisplayedDelta);
-                ImGui::TextColored(ImVec4(0, 255, 0, 255), "Frame time: %.2f Hz", 1000/m_DisplayedDelta);
-                ImGui::End();
+        }
+     
+        // ImGui
+        if(!m_Headless) {
+            ImGui::Begin("Scene");
+            ImVec2 res = ImGui::GetContentRegionAvail();
+            if((m_StorageImages[m_FrameIdx].info.width != res.x || m_StorageImages[m_FrameIdx].info.height != res.y) && res.x != 0 && res.y != 0) {
+                m_SceneSize = res;
+                m_ResizeImages = true;
             }
             
-            EndFrame();
+            ImGui::Image((ImTextureID)m_IgSets[m_FrameIdx], res, ImVec2(0, 1), ImVec2(1, 0));
+
+            ImGui::End();
+
+            ImGui::Begin("Settings");
+            ImGui::TextColored(ImVec4(0, 255, 0, 255), "Delta Time: %.2fms", m_DisplayedDelta);
+            ImGui::TextColored(ImVec4(0, 255, 0, 255), "Frame time: %.2f Hz", 1000/m_DisplayedDelta);
+            ImGui::End();
         }
         
-        if(glfwGetKey(m_Window, GLFW_KEY_UP) == GLFW_PRESS && m_Camera.GetFOV() < 180)
-            m_Camera.GetFOV() += 0.02 * m_DisplayedDelta;
-        else if(glfwGetKey(m_Window, GLFW_KEY_DOWN) == GLFW_PRESS)
-            m_Camera.GetFOV() -= 0.02 * m_DisplayedDelta;
+        EndFrame();
+        
+        if(!m_Headless) {
+            if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+                break;
+            if(glfwGetKey(m_Window, GLFW_KEY_UP) == GLFW_PRESS && m_Camera.GetFOV() < 180)
+                m_Camera.GetFOV() += 0.02 * m_DisplayedDelta;
+            else if(glfwGetKey(m_Window, GLFW_KEY_DOWN) == GLFW_PRESS)
+                m_Camera.GetFOV() -= 0.02 * m_DisplayedDelta;
 
-        if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwPollEvents();
+        }
+        else
             break;
-
-        glfwPollEvents();
     }
 }
 

@@ -38,10 +38,10 @@ static uint32_t FindMemoryType(VkPhysicalDevice device, uint32_t typeFilter, VkM
     return 0xffffffff;
 }
 
-Application::Application(const char* name, int width, int height) : m_Width{ width }, m_Height{ height }
+Application::Application(const char* name, int width, int height, bool headless) : m_Width{ width }, m_Height{ height }, m_Headless{ headless }
 {
     // Window
-    {
+    if(!headless) {
         assert(glfwInit() && "Failed to initialize glfw!");
         glfwWindowHint(GLFW_VISIBLE, false);
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -70,10 +70,14 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
             .ppEnabledExtensionNames = exts
         };
 
+        if(headless)
+            info.enabledExtensionCount = 0;
+
         VK_CHECK(vkCreateInstance(&info, nullptr, &m_Instance));
     }
     // Surface
-    VK_CHECK(glfwCreateWindowSurface(m_Instance, m_Window, nullptr, &m_Surface));
+    if(!headless)
+        VK_CHECK(glfwCreateWindowSurface(m_Instance, m_Window, nullptr, &m_Surface));
     // Physical device
     {
         u32 count = 0;
@@ -94,10 +98,16 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
                     gIdx = i;
                 if(queueProps[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
                     cIdx = i;
+
                 VkBool32 present = false;
-                VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_Surface, &present));
-                if(present)
-                    pIdx = i;
+                if(!headless) {
+                    VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_Surface, &present));
+                    if(present)
+                        pIdx = i;
+                } else {
+                    present = true;
+                    pIdx = UINT_MAX;
+                }
                 
                 VkPhysicalDeviceScalarBlockLayoutFeatures scalarFeatures = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES };
                 VkPhysicalDeviceBufferDeviceAddressFeatures bdaFeatures = { 
@@ -131,7 +141,7 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
             VK_KHR_SWAPCHAIN_EXTENSION_NAME
         };
         // Checking if extensions supported
-        {
+        if(!headless) {
             u32 count = 0;
             VK_CHECK(vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &count, nullptr));
             std::vector<VkExtensionProperties> props(count);
@@ -145,17 +155,17 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
                         extsSupported = true;
                 }
             }
+            assert(extsSupported && "The device extensions aren't supported!");
         }
-        assert(extsSupported && "The device extensions aren't supported!");
 
         float priority = 1.0f;
         i32 indices[3] = {
             m_GraphicsQueueIdx,
-            m_PresentQueueIdx,
-            m_ComputeQueueIdx
+            m_ComputeQueueIdx,
+            m_PresentQueueIdx
         };
 
-        for(i32 i = 0; i < 3; i++) 
+        for(i32 i = 0; i < (headless ? 2 : 3); i++) 
         {
             bool exists = false;
             for(i32 idx : m_UniqueQueues) 
@@ -201,12 +211,13 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
         VK_CHECK(vkCreateDevice(m_PhysicalDevice, &info, nullptr, &m_Device));
 
         vkGetDeviceQueue(m_Device, m_GraphicsQueueIdx, 0, &m_GraphicsQueue);
-        vkGetDeviceQueue(m_Device, m_PresentQueueIdx, 0, &m_PresentQueue);
         vkGetDeviceQueue(m_Device, m_ComputeQueueIdx, 0, &m_ComputeQueue);
+        if(!headless)
+            vkGetDeviceQueue(m_Device, m_PresentQueueIdx, 0, &m_PresentQueue);
     }
     
     // Renderpass
-    {
+    if(!headless) {
         m_ScCaps = GetScCaps();
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = m_ScCaps.format.format;
@@ -248,7 +259,8 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
         VK_CHECK(vkCreateRenderPass(m_Device, &info, nullptr, &m_Pass));
     }
     // Swapchain
-    CreateSwapchain();
+    if(!headless)
+        CreateSwapchain();
     // Command pool and buffers
     {
         {
@@ -293,7 +305,7 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
     }
 
     // UI descriptor pool
-    {
+    if(!headless) {
         VkDescriptorPoolSize pool_sizes[] =
         {
             { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10000 },
@@ -307,7 +319,7 @@ Application::Application(const char* name, int width, int height) : m_Width{ wid
         VK_CHECK(vkCreateDescriptorPool(m_Device, &pool_info, nullptr, &m_UiDescPool));
     }
     // ImGui
-    {
+    if(!headless) {
         IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 
@@ -398,11 +410,12 @@ Application::~Application()
 {
     VK_CHECK(vkDeviceWaitIdle(m_Device));
 
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    vkDestroyDescriptorPool(m_Device, m_UiDescPool, nullptr);
+    if(!m_Headless) {
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        vkDestroyDescriptorPool(m_Device, m_UiDescPool, nullptr);
+    }
 
     for(auto& fence : m_InFlightFences)
         vkDestroyFence(m_Device, fence, nullptr);
@@ -421,10 +434,12 @@ Application::~Application()
     for(auto& view : m_ScImageViews)
         vkDestroyImageView(m_Device, view, nullptr);
 
-    vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
-    vkDestroyRenderPass(m_Device, m_Pass, nullptr);
+    if(!m_Headless) {
+        vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
+        vkDestroyRenderPass(m_Device, m_Pass, nullptr);
+        vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
+    }
     vkDestroyDevice(m_Device, nullptr);
-    vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
     vkDestroyInstance(m_Instance, nullptr);
 
     glfwDestroyWindow(m_Window);
@@ -433,39 +448,53 @@ Application::~Application()
 
 void Application::Run()
 {
-    glfwShowWindow(m_Window);
-    while(!glfwWindowShouldClose(m_Window))
+    if(!m_Headless)
+        glfwShowWindow(m_Window);
+    while(true)
     {
-        glfwGetFramebufferSize(m_Window, &m_Width, &m_Height);
+        if(!m_Headless) {
+            if(glfwWindowShouldClose(m_Window))
+                break;
+            
+            glfwGetFramebufferSize(m_Window, &m_Width, &m_Height);
+        }
+
         if(!StartFrame())
             continue;
      
         // ImGui
-        ImGui::ShowDemoWindow();
+        if(!m_Headless)
+            ImGui::ShowDemoWindow();
         
         EndFrame();
         
-        if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            break;
+        if(!m_Headless) {
+            if(glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+                break;
 
-        glfwPollEvents();
+            glfwPollEvents();
+        }
+        else
+            break;
     }
 }
 
 bool Application::StartFrame()
 {
     VK_CHECK(vkWaitForFences(m_Device, 1, &m_InFlightFences[m_FrameIdx], true, UINT64_MAX));
-    
-    VkResult result = vkAcquireNextImageKHR(m_Device, m_Swapchain, UINT64_MAX, m_ImageAvailable[m_FrameIdx], nullptr, &m_ImageIdx);
-    if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-    {
-        Resize();
-        m_FrameIdx = (m_FrameIdx + 1) % FRAMES_IN_FLIGHT; 
-        return false;
-    }
-    else
-    {
-        VK_CHECK(result);
+   
+    if(!m_Headless) {
+        VkResult result = vkAcquireNextImageKHR(m_Device, m_Swapchain, UINT64_MAX, m_ImageAvailable[m_FrameIdx], nullptr, &m_ImageIdx);
+        if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        {
+            Resize();
+            m_FrameIdx = (m_FrameIdx + 1) % FRAMES_IN_FLIGHT; 
+            return false;
+        }
+        else
+        {
+            VK_CHECK(result);
+        }
     }
     
     VK_CHECK(vkResetFences(m_Device, 1, &m_InFlightFences[m_FrameIdx]));
@@ -474,6 +503,9 @@ bool Application::StartFrame()
 
     BeginCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx], VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     BeginCommandBuffer(m_ComputeCmdBuffs[m_FrameIdx], VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    if(m_Headless)
+        return true;
 
     VkClearValue clearColor = {};
     clearColor.color = {0.1f, 0.1f, 0.1f, 1.0f};
@@ -500,14 +532,17 @@ bool Application::StartFrame()
 
 void Application::EndFrame()
 {
-    ImGui::EndFrame();
-	ImGui::Render();
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), m_GraphicsCmdBuffs[m_FrameIdx], nullptr);
+    if(!m_Headless) {
+        ImGui::EndFrame();
+        ImGui::Render();
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), m_GraphicsCmdBuffs[m_FrameIdx], nullptr);
 
-	ImGui::UpdatePlatformWindows();
-	ImGui::RenderPlatformWindowsDefault();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
 
-    vkCmdEndRenderPass(m_GraphicsCmdBuffs[m_FrameIdx]);
+        vkCmdEndRenderPass(m_GraphicsCmdBuffs[m_FrameIdx]);
+    }
+
     VK_CHECK(vkEndCommandBuffer(m_GraphicsCmdBuffs[m_FrameIdx]));
     VK_CHECK(vkEndCommandBuffer(m_ComputeCmdBuffs[m_FrameIdx]));
 
@@ -533,18 +568,20 @@ void Application::EndFrame()
     
     VK_CHECK(vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_InFlightFences[m_FrameIdx]));
 
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &m_Swapchain;
-    presentInfo.pImageIndices = &m_ImageIdx;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &m_RenderFinished[m_ImageIdx];
-    
-    VkResult result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
-    if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-    {
-        Resize();
+    if(!m_Headless) {
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &m_Swapchain;
+        presentInfo.pImageIndices = &m_ImageIdx;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &m_RenderFinished[m_ImageIdx];
+        
+        VkResult result = vkQueuePresentKHR(m_PresentQueue, &presentInfo);
+        if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        {
+            Resize();
+        }
     }
 
     m_FrameIdx = (m_FrameIdx + 1) % FRAMES_IN_FLIGHT;
@@ -710,6 +747,9 @@ void Application::CreateSwapchain()
 
 void Application::Resize()
 {
+    if(m_Headless)
+        return;
+
     int width = 0, height = 0;
     glfwGetFramebufferSize(m_Window, &width, &height);
 
