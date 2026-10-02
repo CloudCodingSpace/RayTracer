@@ -42,10 +42,10 @@ void main() {
 
     ivec2 fragCoord = ivec2(gl_GlobalInvocationID.xy);
 
-    seed = pd.seed;
-    seed ^= uint(fragCoord.x) * 1973u;
-    seed ^= uint(fragCoord.y) * 9277u;
-    seed = pcg_hash(seed);
+    g_Seed = pd.seed;
+    g_Seed ^= uint(fragCoord.x) * 1973u;
+    g_Seed ^= uint(fragCoord.y) * 9277u;
+    g_Seed = pcg_hash(g_Seed);
 
     vec2 uv = (vec2(fragCoord) + 0.5) / pd.resolution;
     uv = uv * 2.0 - 1.0;

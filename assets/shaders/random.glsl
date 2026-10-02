@@ -16,7 +16,7 @@ uint pcg_hash(uint i) {
 
 float RandomFloat() {
     uint r = pcg_hash(g_Seed);
-    g_Seed = pcg_hash(seed);
+    g_Seed = pcg_hash(g_Seed);
 
     return float(r) / UINT_MAX;
 }
