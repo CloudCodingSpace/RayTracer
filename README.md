@@ -1,14 +1,15 @@
 # RayTracer
 
-This is currently a work in progress. This project uses Vulkan and C++ and does raytracing using compute shaders.  
-This project is currently going through a rewrite. The earlier version used OpenGL with C++.  The source code and information about that version is in the [v1.0](http://github.com/CloudCodingSpace/RayTracer/tree/v1.0) branch.
+This app uses Vulkan and C++ and does raytracing using compute shaders.  
+This app is currently going through a rewrite. The earlier version used OpenGL with C++.  The source code and information about that version is in the [v1.0](http://github.com/CloudCodingSpace/RayTracer/tree/v1.0) branch.
 
 # Goals
- - Be able to render any number of spheres
- - Be able to render triangles
- - Get photorealistic images as output
- - Be able to take screenshots
- - Be able to render HDR panorama as skyboxes
+ - [x] Be able to render any number of spheres
+ - [ ] Be able to render triangles
+ - [ ] Get photorealistic images as output
+ - [ ] Be able to take screenshots
+ - [ ] Be able to render HDR panorama as skyboxes
+ - [ ] Be able to load separate scene configs as json file format
 
 ## Prerequisites
 
